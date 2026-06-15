@@ -23,7 +23,16 @@ CP.markets = (function () {
           spark: spark, score: sig.score, signal: sig.label, rsi: sig.rsi,
         };
       });
-      return { live: true, coins: coins };
+      // Override price / 24h / volume with Binance so the screener matches Binance.
+      return CP.api.getBinance24hAll().then(function (bmap) {
+        if (bmap) {
+          coins.forEach(function (c) {
+            var b = bmap[c.symbol];
+            if (b) { c.price = b.price; c.change24h = b.change24h; c.volume = b.volume; }
+          });
+        }
+        return { live: true, coins: coins };
+      });
     }).catch(function () {
       return { live: false, coins: sampleMarkets() };
     });

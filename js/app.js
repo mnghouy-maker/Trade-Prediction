@@ -103,6 +103,43 @@
     U.el("lastUpdated").textContent = label;
   }
 
+  // 1-second live price refresh straight from Binance — keeps displayed prices
+  // matching Binance without re-running the whole heavy pipeline.
+  function priceTick() {
+    if (!CP.state.data) return;
+    var syms = ["BTCUSDT", "ETHUSDT"];
+    var selSym = CP.api.binanceSymbol(CP.state.selectedCoin);
+    if (selSym && syms.indexOf(selSym) === -1) syms.push(selSym);
+    CP.api.getBinancePrices(syms).then(function (map) {
+      if (!map) return;
+      applyLivePrice("bitcoin", "BTCUSDT", map);
+      applyLivePrice("ethereum", "ETHUSDT", map);
+      applyLivePrice(CP.state.selectedCoin, selSym, map);
+      CP.state.live = true;
+      CP.state.lastUpdate = Date.now();
+      refreshPriceUI();
+    });
+  }
+
+  function applyLivePrice(id, sym, map) {
+    if (!id || !sym || map[sym] == null) return;
+    var p = map[sym];
+    if (CP.state.data && CP.state.data.simple[id]) CP.state.data.simple[id].usd = p;
+    if (CP.state.marketsById[id]) CP.state.marketsById[id].price = p;
+    var c = CP.state.coinCache[id];
+    if (c && c.tech) c.tech.price = p;
+  }
+
+  // Repaint just the price-sensitive parts (cheap) on each live tick.
+  function refreshPriceUI() {
+    var id = CP.state.selectedCoin;
+    var meta = metaFor(id);
+    var entry = CP.state.coinCache[id];
+    if (entry && entry.tech) {
+      CP.render.renderTechnical({ symbol: meta.symbol, tech: entry.tech, change24h: meta.change24h, volume: meta.volume });
+    }
+  }
+
   function paint(d, result) {
     CP.render.renderHero(result, d);
     CP.render.renderOverview(d, result);
@@ -330,11 +367,12 @@
   // ---- Boot ----
   function start() {
     wire();
-    tickStatus();                 // show "Connecting…" immediately
+    tickStatus();                       // show "Connecting…" immediately
+    setInterval(tickStatus, 1000);      // live clock — set FIRST so it always ticks
+    setInterval(priceTick, 1000);       // live Binance prices every second
     loadAll();
     loadMarkets();
     CP.state.timer = setInterval(loadAll, CP.config.refreshInterval);
-    setInterval(tickStatus, 1000); // live clock + "updated Xs ago"
     setInterval(function () { loadMarkets(); }, 2 * CP.config.refreshInterval); // refresh screener prices
     // keep calendar countdowns ticking even between data refreshes
     setInterval(function () { CP.render.renderCalendar(computeEvents()); }, 60000);

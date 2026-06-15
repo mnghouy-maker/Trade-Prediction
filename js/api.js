@@ -15,8 +15,60 @@ CP.api = (function () {
     return U.fetchJSON(base + path, timeout || 6000);
   }
 
-  // ---- Live: simple price + market data for BTC & ETH ----
+  var BINANCE = cfg.api.binance;
+
+  // Map a CoinGecko coin id -> Binance USDT trading pair (so prices match Binance).
+  var SYMAP = { bitcoin: "BTC", ethereum: "ETH" };
+  function baseSymbol(coinId) {
+    if (SYMAP[coinId]) return SYMAP[coinId];
+    var m = window.CP.state && CP.state.marketsById && CP.state.marketsById[coinId];
+    return m ? m.symbol : null;
+  }
+  function binanceSymbol(coinId) {
+    var b = baseSymbol(coinId);
+    return b ? b + "USDT" : null;
+  }
+
+  // Light, fast price lookup for the 1-second live refresh.
+  function getBinancePrices(symbols) {
+    var url = BINANCE + "/ticker/price?symbols=" + encodeURIComponent(JSON.stringify(symbols));
+    return U.fetchJSON(url, 5000).then(function (arr) {
+      var map = {};
+      arr.forEach(function (t) { map[t.symbol] = +t.price; });
+      return map;
+    }).catch(function () { return null; });
+  }
+
+  // All Binance USDT tickers (price + 24h change + volume), keyed by base symbol.
+  function getBinance24hAll() {
+    return U.fetchJSON(BINANCE + "/ticker/24hr", 20000).then(function (arr) {
+      var map = {};
+      arr.forEach(function (t) {
+        var s = t.symbol;
+        if (s.length > 4 && s.slice(-4) === "USDT") {
+          map[s.slice(0, -4)] = { price: +t.lastPrice, change24h: +t.priceChangePercent, volume: +t.quoteVolume };
+        }
+      });
+      return map;
+    }).catch(function () { return null; });
+  }
+
+  // ---- Live: BTC & ETH price/24h from Binance (CoinGecko fallback) ----
   function getSimple() {
+    var url = BINANCE + '/ticker/24hr?symbols=' + encodeURIComponent('["BTCUSDT","ETHUSDT"]');
+    return U.fetchJSON(url).then(function (arr) {
+      var by = {};
+      arr.forEach(function (t) { by[t.symbol] = t; });
+      function pack(s) {
+        var t = by[s] || {};
+        return { usd: +t.lastPrice, usd_24h_change: +t.priceChangePercent, usd_24h_vol: +t.quoteVolume };
+      }
+      if (!by.BTCUSDT || !by.ETHUSDT) throw new Error("missing");
+      return { live: true, data: { bitcoin: pack("BTCUSDT"), ethereum: pack("ETHUSDT") } };
+    }).catch(function () { return coingeckoSimple(); });
+  }
+
+  function coingeckoSimple() {
     var ids = cfg.coins.map(function (c) { return c.id; }).join(",");
     var url = cfg.api.coingecko + "/simple/price?ids=" + ids +
       "&vs_currencies=usd&include_24hr_change=true&include_24hr_vol=true&include_market_cap=true";
@@ -24,8 +76,8 @@ CP.api = (function () {
       return { live: true, data: d };
     }).catch(function () {
       return { live: false, data: {
-        bitcoin: { usd: 64250, usd_24h_change: 1.8, usd_24h_vol: 31e9, usd_market_cap: 1.27e12 },
-        ethereum: { usd: 3380, usd_24h_change: 2.4, usd_24h_vol: 15e9, usd_market_cap: 4.06e11 },
+        bitcoin: { usd: 64250, usd_24h_change: 1.8, usd_24h_vol: 31e9 },
+        ethereum: { usd: 3380, usd_24h_change: 2.4, usd_24h_vol: 15e9 },
       } };
     });
   }
@@ -50,17 +102,35 @@ CP.api = (function () {
     });
   }
 
-  // ---- Live: daily closes for indicators / backtest ----
+  // ---- Live: daily closes for indicators / backtest (Binance klines) ----
   function getMarketChart(coinId, days) {
+    var sym = binanceSymbol(coinId);
+    if (sym) {
+      var lim = Math.min(1000, (days | 0) + 5); // Binance caps daily klines at 1000
+      var url = BINANCE + "/klines?symbol=" + sym + "&interval=1d&limit=" + lim;
+      return U.fetchJSON(url, 15000).then(function (k) {
+        if (!k || !k.length) throw new Error("empty");
+        return {
+          live: true,
+          closes: k.map(function (c) { return +c[4]; }),
+          volumes: k.map(function (c) { return +c[7]; }),
+          times: k.map(function (c) { return c[0]; }),
+        };
+      }).catch(function () { return coingeckoChart(coinId, days); });
+    }
+    return coingeckoChart(coinId, days);
+  }
+
+  function coingeckoChart(coinId, days) {
     var url = cfg.api.coingecko + "/coins/" + coinId + "/market_chart?vs_currency=usd&days=" + days;
     return U.fetchJSON(url, 15000).then(function (d) {
-      var closes = d.prices.map(function (p) { return p[1]; });
-      var vols = (d.total_volumes || []).map(function (v) { return v[1]; });
-      var times = d.prices.map(function (p) { return p[0]; });
-      return { live: true, closes: closes, volumes: vols, times: times };
-    }).catch(function () {
-      return synthChart(coinId, days);
-    });
+      return {
+        live: true,
+        closes: d.prices.map(function (p) { return p[1]; }),
+        volumes: (d.total_volumes || []).map(function (v) { return v[1]; }),
+        times: d.prices.map(function (p) { return p[0]; }),
+      };
+    }).catch(function () { return synthChart(coinId, days); });
   }
 
   // Deterministic synthetic series for offline/demo fallback.
@@ -149,5 +219,6 @@ CP.api = (function () {
   return {
     getSimple: getSimple, getGlobal: getGlobal, getFearGreed: getFearGreed,
     getMarketChart: getMarketChart, getNews: getNews, getWhales: getWhales,
+    getBinancePrices: getBinancePrices, getBinance24hAll: getBinance24hAll, binanceSymbol: binanceSymbol,
   };
 })();

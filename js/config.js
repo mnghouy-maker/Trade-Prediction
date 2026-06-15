@@ -16,6 +16,7 @@ CP.config = {
 
   // Free / no-key, CORS-enabled endpoints. These run in the visitor's browser.
   api: {
+    binance: "https://api.binance.com/api/v3",
     coingecko: "https://api.coingecko.com/api/v3",
     fearGreed: "https://api.alternative.me/fng/?limit=2",
     news: "https://min-api.cryptocompare.com/data/v2/news/?lang=EN",
