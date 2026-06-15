@@ -26,8 +26,21 @@ is computed client-side. There is nothing to install — just open it.
 | 9 | **Backtesting** — replay the model over 1–3 years, win rate / profit factor / accuracy | CoinGecko (computed) |
 | 10 | **Prediction History** — every daily call graded against the real move | localStorage |
 
+### 🛠️ Trading tools
+
+| Tool | What it does | Source |
+|------|--------------|--------|
+| **Coin Screener** | All top 100–250 coins, searchable & sortable, each with a live 0–100 bull/bear signal (RSI + 7-day trend). Click a row to load it everywhere below. | CoinGecko `/coins/markets` |
+| **Trade Signal — when to enter** | Turns indicators into **BUY / SELL / WAIT** with **entry, stop-loss, 3 take-profit targets, risk:reward and confidence** for the selected coin. Waits on overbought/oversold/mixed setups. | computed |
+| **Profit Calculator** | Binance-style futures **PnL / ROE / liquidation** — long or short, leverage, fees, by quantity or position size. One-click fill from the live price, TP or stop. | computed |
+
 \* Whale flows and true social-media (X/Reddit/Telegram) sentiment require paid API
-keys, so they ship as clearly-labelled **SAMPLE** data. See *Going further* below.
+keys, so they ship as clearly-labelled **SAMPLE** data. See *Optional backend* below.
+
+> **How to use it:** scan the **screener** for a coin with a strong signal → click it
+> to see its **technical breakdown** and **trade plan** (entry/stop/targets) → drop the
+> numbers into the **calculator** to size the trade and see your potential profit, ROE
+> and liquidation price before you place it.
 
 ---
 
@@ -128,6 +141,8 @@ js/score.js         signal builder + 0–100 engine
 js/alerts.js        price alerts + notifications
 js/history.js       prediction history + grading
 js/backtest.js      historical replay
+js/markets.js       coin universe + per-coin screener signal
+js/trade.js         entry/stop/target engine + PnL calculator math
 js/render.js        all DOM rendering
 js/app.js           orchestration + refresh loop
 server/index.js     optional Express backend (keyed news/whales/LLM)
