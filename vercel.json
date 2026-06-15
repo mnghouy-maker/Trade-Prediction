@@ -1,0 +1,7 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "buildCommand": null,
+  "outputDirectory": ".",
+  "cleanUrls": true,
+  "comment": "Static deploy of the standalone dashboard. To run the optional keyed backend, host server/index.js on a Node platform (Render, Railway, Fly.io) and set CP.config.backend.base to its URL."
+}

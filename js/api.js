@@ -5,6 +5,16 @@ CP.api = (function () {
   var cfg = CP.config;
   var U = CP.util;
 
+  // Optional backend (server/index.js). When the app is served by that backend,
+  // these same-origin routes return key-enriched data (CryptoPanic news, Whale
+  // Alert flows, LLM sentiment). On GitHub Pages / file:// they 404 fast and we
+  // transparently fall back to the public-API / sample paths below.
+  function tryBackend(path, timeout) {
+    if (cfg.backend && cfg.backend.disabled) return Promise.reject(new Error("disabled"));
+    var base = (cfg.backend && cfg.backend.base) || "";
+    return U.fetchJSON(base + path, timeout || 6000);
+  }
+
   // ---- Live: simple price + market data for BTC & ETH ----
   function getSimple() {
     var ids = cfg.coins.map(function (c) { return c.id; }).join(",");
@@ -71,14 +81,19 @@ CP.api = (function () {
     return { live: false, closes: closes, volumes: vols, times: times };
   }
 
-  // ---- Live: news headlines ----
+  // ---- Live: news headlines (backend → CryptoCompare → sample) ----
   function getNews() {
-    return U.fetchJSON(cfg.api.news).then(function (d) {
-      var items = (d.Data || []).slice(0, 18).map(function (n) {
-        return { title: n.title, url: n.url, source: n.source_info ? n.source_info.name : n.source,
-          ts: n.published_on * 1000, categories: n.categories };
+    return tryBackend("/api/news").then(function (d) {
+      if (!d || !d.items || !d.items.length) throw new Error("empty");
+      return { live: true, items: d.items, enriched: !!d.enriched };
+    }).catch(function () {
+      return U.fetchJSON(cfg.api.news).then(function (d) {
+        var items = (d.Data || []).slice(0, 18).map(function (n) {
+          return { title: n.title, url: n.url, source: n.source_info ? n.source_info.name : n.source,
+            ts: n.published_on * 1000, categories: n.categories };
+        });
+        return { live: true, items: items };
       });
-      return { live: true, items: items };
     }).catch(function () {
       return { live: false, items: sampleNews() };
     });
@@ -96,8 +111,18 @@ CP.api = (function () {
     ];
   }
 
-  // ---- Sample-only: whale transfers (needs Whale Alert API key for live) ----
+  // ---- Whale transfers (backend Whale Alert if keyed, else sample) ----
   function getWhales(btcPrice) {
+    return tryBackend("/api/whales").then(function (d) {
+      if (!d || !d.items) throw new Error("empty");
+      return { live: true, items: d.items, netToColdStorage: d.netToColdStorage };
+    }).catch(function () {
+      return sampleWhales(btcPrice);
+    });
+  }
+
+  // Deterministic sample whale feed (no key required).
+  function sampleWhales(btcPrice) {
     var seed = Math.floor(Date.now() / 3600000); // changes hourly
     function rnd() { seed = (seed * 1103515245 + 12345) & 0x7fffffff; return seed / 0x7fffffff; }
     var dirs = ["exchange_outflow", "exchange_inflow", "wallet_to_wallet"];

@@ -87,18 +87,19 @@ CP.render = (function () {
   }
 
   // ---------- 3. technical ----------
-  function renderTechnical(coinId, d) {
-    var tech = d.tech[coinId];
-    var sym = coinId === "ethereum" ? "ETH" : "BTC";
-    var simple = d.simple[coinId];
-    if (!tech) { U.el("technicalBody").innerHTML = '<div class="skeleton">No data.</div>'; return; }
+  // info: { symbol, tech, change24h, volume }
+  function renderTechnical(info) {
+    var tech = info.tech;
+    if (!tech) { U.el("technicalBody").innerHTML = '<div class="skeleton">Loading coin data…</div>'; return; }
+    var label = U.el("techCoinLabel");
+    if (label) label.textContent = info.symbol ? "· " + info.symbol : "";
     var ts = CP.score.technicalScore(tech);
-    var change = simple.usd_24h_change;
+    var change = info.change24h;
 
     var metrics = [
-      ["Price", U.fmtUSD(tech.price)],
+      ["Price", U.fmtUSD(tech.price, tech.price < 1 ? 4 : 2)],
       ["24h", '<span class="' + U.pctClass(change) + '">' + U.fmtPct(change, true) + "</span>"],
-      ["Volume", U.fmtCompact(simple.usd_24h_vol)],
+      ["Volume", U.fmtCompact(info.volume)],
       ["RSI (14)", tech.rsi != null ? tech.rsi.toFixed(1) : "—"],
       ["50-day MA", U.fmtUSD(tech.sma50)],
       ["200-day MA", U.fmtUSD(tech.sma200)],
@@ -113,7 +114,7 @@ CP.render = (function () {
     var barColor = ts.pct >= 60 ? "var(--bull)" : ts.pct <= 40 ? "var(--bear)" : "var(--neutral)";
 
     U.el("technicalBody").innerHTML =
-      '<div class="ta-price-row"><span class="ta-price">' + U.fmtUSD(tech.price) + "</span>" +
+      '<div class="ta-price-row"><span class="ta-price">' + U.fmtUSD(tech.price, tech.price < 1 ? 4 : 2) + "</span>" +
         '<span class="ta-change ' + U.pctClass(change) + '">' + U.fmtPct(change, true) + " (24h)</span></div>" +
       '<div class="ta-metrics">' + metrics.map(function (m) {
         return '<div class="ta-metric"><div class="k">' + m[0] + '</div><div class="v">' + m[1] + "</div></div>";
@@ -262,10 +263,92 @@ CP.render = (function () {
         recent + "</tbody></table>";
   }
 
+  // ---------- coin screener ----------
+  function renderScreener(coins, selectedId) {
+    if (!coins.length) { U.el("screenerBody").innerHTML = '<div class="skeleton">No coins.</div>'; return; }
+    var rows = coins.map(function (c) {
+      var sigCls = c.signal === "Bullish" ? "bull" : c.signal === "Bearish" ? "bear" : "neutral";
+      var barColor = c.score >= 60 ? "var(--bull)" : c.score <= 40 ? "var(--bear)" : "var(--neutral)";
+      var d1 = c.change1h, d24 = c.change24h, d7 = c.change7d;
+      var img = c.image ? '<img class="coin-img" src="' + U.escapeHtml(c.image) + '" alt="" loading="lazy" />' : "";
+      return '<tr data-coin="' + c.id + '" class="screener-row' + (c.id === selectedId ? " sel" : "") + '">' +
+        "<td>" + (c.rank || "") + "</td>" +
+        '<td class="coin-cell">' + img + "<span><strong>" + U.escapeHtml(c.symbol) + "</strong> " +
+          '<span class="coin-name">' + U.escapeHtml(c.name) + "</span></span></td>" +
+        "<td>" + U.fmtUSD(c.price, c.price < 1 ? 4 : 2) + "</td>" +
+        '<td class="' + U.pctClass(d1) + '">' + U.fmtPct(d1, true) + "</td>" +
+        '<td class="' + U.pctClass(d24) + '">' + U.fmtPct(d24, true) + "</td>" +
+        '<td class="' + U.pctClass(d7) + '">' + U.fmtPct(d7, true) + "</td>" +
+        '<td><div class="score-cell"><div class="score-bar"><div style="width:' + c.score + "%;background:" + barColor + '"></div></div>' +
+          '<span class="pill ' + sigCls + '">' + c.score + "</span></div></td></tr>";
+    }).join("");
+    U.el("screenerBody").innerHTML =
+      '<div class="screener-scroll"><table class="data screener-table"><thead><tr>' +
+      "<th>#</th><th>Coin</th><th>Price</th><th>1h</th><th>24h</th><th>7d</th><th>Signal</th>" +
+      "</tr></thead><tbody>" + rows + "</tbody></table></div>";
+  }
+
+  // ---------- trade signal ----------
+  function renderTrade(plan, label, price) {
+    var color = plan.action === "BUY" ? "var(--bull)" : plan.action === "SELL" ? "var(--bear)" : "var(--neutral)";
+    var verb = plan.action === "BUY" ? "BUY / LONG" : plan.action === "SELL" ? "SELL / SHORT" : "WAIT";
+    function pctFrom(target) {
+      return U.fmtPct(((target - plan.entry) / plan.entry) * 100, true);
+    }
+    var levels = "";
+    if (plan.action !== "WAIT") {
+      var rMult = [1.5, 3, 5];
+      levels =
+        '<div class="trade-levels">' +
+        levelRow("Entry", plan.entry, "", "var(--text)") +
+        levelRow("Stop loss", plan.stop, pctFrom(plan.stop), "var(--bear)") +
+        plan.targets.map(function (t, i) {
+          return levelRow("Target " + (i + 1) + " (" + rMult[i] + "R)", t, pctFrom(t), "var(--bull)");
+        }).join("") +
+        "</div>" +
+        '<div class="trade-rr">Risk : Reward <strong>1 : ' + (plan.rr ? plan.rr.toFixed(1) : "—") + "</strong>" +
+        " · Support " + U.fmtUSD(plan.support) + " · Resistance " + U.fmtUSD(plan.resistance) + "</div>";
+    } else {
+      levels = '<div class="trade-rr">Support ' + U.fmtUSD(plan.support) + " · Resistance " + U.fmtUSD(plan.resistance) +
+        " · RSI " + plan.rsi.toFixed(0) + "</div>";
+    }
+    U.el("tradeBody").innerHTML =
+      '<div class="trade-action" style="background:' + color + '22;border-color:' + color + '">' +
+        '<span class="trade-verb" style="color:' + color + '">' + verb + "</span>" +
+        '<span class="trade-conf">' + plan.confidence + "% confidence · bias " + plan.bias + "</span></div>" +
+      levels +
+      '<ul class="trade-notes">' + plan.notes.map(function (n) { return "<li>" + U.escapeHtml(n) + "</li>"; }).join("") + "</ul>";
+  }
+  function levelRow(label, val, pct, color) {
+    return '<div class="lvl-row"><span class="lvl-label">' + label + '</span>' +
+      '<span class="lvl-val" style="color:' + color + '">' + U.fmtUSD(val, val < 1 ? 4 : 2) +
+      (pct ? ' <span class="lvl-pct">' + pct + "</span>" : "") + "</span></div>";
+  }
+
+  // ---------- profit calculator ----------
+  function renderCalc(r) {
+    var pnlColor = r.net >= 0 ? "var(--bull)" : "var(--bear)";
+    function row(k, v, color) {
+      return '<div class="calc-res-row"><span>' + k + '</span><strong' + (color ? ' style="color:' + color + '"' : "") + ">" + v + "</strong></div>";
+    }
+    U.el("calcResults").innerHTML =
+      '<div class="calc-pnl" style="color:' + pnlColor + '">' + (r.net >= 0 ? "+" : "") + U.fmtUSD(r.net) +
+        ' <span class="calc-roe">(' + U.fmtPct(r.roe, true) + " ROE)</span></div>" +
+      row("Initial margin", U.fmtUSD(r.margin)) +
+      row("Position size", U.fmtUSD(r.notional)) +
+      row("Gross PnL", (r.gross >= 0 ? "+" : "") + U.fmtUSD(r.gross), r.gross >= 0 ? "var(--bull)" : "var(--bear)") +
+      row("Fees", "-" + U.fmtUSD(r.fees), "var(--bear)") +
+      row("Net profit", (r.net >= 0 ? "+" : "") + U.fmtUSD(r.net), pnlColor) +
+      row("Return on margin", U.fmtPct(r.roe, true), pnlColor) +
+      row("Est. liquidation", U.fmtUSD(r.liq), "var(--neutral)") +
+      '<div class="card-sub" style="margin-top:8px">Liquidation is an isolated-margin estimate (excludes maintenance margin).</div>';
+  }
+
   return {
     setStatus: setStatus, toast: toast, renderHero: renderHero, renderOverview: renderOverview,
     renderTechnical: renderTechnical, renderAI: renderAI, renderNews: renderNews,
     renderSentiment: renderSentiment, renderWhales: renderWhales, renderCalendar: renderCalendar,
     renderAlerts: renderAlerts, renderHistory: renderHistory, renderBacktest: renderBacktest,
+    renderScreener: renderScreener, renderTrade: renderTrade, renderCalc: renderCalc,
   };
 })();

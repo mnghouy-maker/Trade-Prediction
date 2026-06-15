@@ -4,3 +4,7 @@ node_modules/
 .vscode/
 .idea/
 dist/
+.env
+.env.local
+.vercel
+.netlify
