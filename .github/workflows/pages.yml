@@ -2,9 +2,11 @@ name: Deploy to GitHub Pages
 
 # Publishes the static dashboard. The app runs entirely in the browser against
 # free public APIs, so no build step or secrets are required.
+# Deploys on push to the repo's default branch (GitHub Pages' environment only
+# accepts the default branch) as well as main, plus manual runs.
 on:
   push:
-    branches: [main]
+    branches: [main, "claude/charming-fermat-9ht677"]
   workflow_dispatch:
 
 permissions:
