@@ -1,0 +1,11 @@
+# Static deploy of the standalone dashboard (no backend needed).
+# The app fetches live data directly from free public APIs in the browser.
+[build]
+  publish = "."
+  command = ""
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"

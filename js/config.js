@@ -19,6 +19,14 @@ CP.config = {
     news: "https://min-api.cryptocompare.com/data/v2/news/?lang=EN",
   },
 
+  // Optional backend (server/index.js). `base` "" = same origin; set to a full
+  // URL to point at a separately-hosted API. `disabled: true` forces the
+  // public-API / sample paths and skips backend probing entirely.
+  backend: {
+    base: "",
+    disabled: false,
+  },
+
   // Signal weights for the composite AI score (0..100).
   weights: {
     above200ma: 1.4,

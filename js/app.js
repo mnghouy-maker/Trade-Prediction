@@ -15,8 +15,17 @@
       var simple = res[0], global = res[1], fg = res[2], btcChart = res[3], ethChart = res[4], news = res[5];
 
       var sent = CP.sentiment.analyze(news.items);
-      var whales = CP.api.getWhales(simple.data.bitcoin.usd);
 
+      return CP.api.getWhales(simple.data.bitcoin.usd).then(function (whales) {
+        return finish(simple, global, fg, btcChart, ethChart, news, sent, whales);
+      });
+    }).catch(function (e) {
+      console.error(e);
+      CP.render.toast("Failed to load data — retrying next cycle.", "bear");
+    });
+  }
+
+  function finish(simple, global, fg, btcChart, ethChart, news, sent, whales) {
       var d = {
         simple: simple.data,
         global: { marketCap: global.marketCap, change24h: global.change24h },
@@ -48,10 +57,6 @@
 
       var allLive = simple.live && global.live && fg.live && btcChart.live && ethChart.live && news.live;
       CP.render.setStatus(allLive, new Date());
-    }).catch(function (e) {
-      console.error(e);
-      CP.render.toast("Failed to load data — retrying next cycle.", "bear");
-    });
   }
 
   function paint(d, result) {

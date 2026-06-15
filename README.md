@@ -54,36 +54,63 @@ Indicator math (SMA, EMA, **Wilder's RSI(14)**, **MACD 12/26/9**) lives in
 
 ## 🚀 Run it
 
-**Option A — just open the file**
+**Option A — just open the file (fully standalone, no install)**
 
 ```bash
 open index.html        # macOS   (or double-click it)
 ```
 
-**Option B — serve it (recommended; avoids any file:// quirks)**
+**Option B — static server**
 
 ```bash
-npm start              # -> python3 -m http.server 8080
-# then visit http://localhost:8080
+npm run static         # -> python3 -m http.server 8080
 ```
 
-or any static server: `npx serve`, `python3 -m http.server`, VS Code Live Server, etc.
+or any static server: `npx serve`, VS Code Live Server, etc.
 
-**Deploy** anywhere static: GitHub Pages, Netlify, Vercel, Cloudflare Pages — no backend needed.
+**Option C — with the optional backend (real keys for news/whales/LLM)**
+
+```bash
+npm install            # express (+ optional dotenv)
+cp .env.example .env   # add any keys you have (all optional)
+npm start              # -> http://localhost:8080
+```
+
+The backend serves the same dashboard and, when keys are present, upgrades the
+news, whale and sentiment data. The frontend auto-detects it: served by the
+backend it uses the keyed routes; on GitHub Pages / `file://` it falls straight
+back to the free public APIs and sample data. **It always works either way.**
 
 ---
 
-## 🔌 Going further (plugging in live keys)
+## 🔌 Optional backend & live keys
 
-The data layer is isolated in [`js/api.js`](js/api.js). To upgrade the SAMPLE/proxy
-sections to fully live data, add a tiny backend (so keys aren't exposed) and point
-these functions at it:
+[`server/index.js`](server/index.js) is a small Express app. All keys are
+**optional** — set only what you have in `.env` (see [`.env.example`](.env.example)):
 
-- **Real news + LLM sentiment** — swap the keyword classifier in `js/sentiment.js`
-  for a server route that calls an LLM, and/or use [CryptoPanic](https://cryptopanic.com/developers/api/) / [NewsAPI](https://newsapi.org).
-- **Whale activity** — [Whale Alert API](https://docs.whale-alert.io/) or on-chain providers.
-- **Social sentiment** — X (Twitter), Reddit, Telegram APIs aggregated server-side.
-- **Economic calendar** — a live macro-calendar API instead of the built-in seed.
+| Env var | Upgrades | Without it |
+|---------|----------|------------|
+| `CRYPTOPANIC_TOKEN` | Real news feed ([CryptoPanic](https://cryptopanic.com/developers/api/)) | Free CryptoCompare feed |
+| `WHALE_ALERT_KEY` | Live exchange flows ([Whale Alert](https://docs.whale-alert.io/)) | Clearly-labelled SAMPLE whales |
+| `ANTHROPIC_API_KEY` | LLM headline sentiment (Claude) | Built-in keyword classifier |
+
+Keys stay server-side — they are never shipped to the browser. The data layer is
+isolated in [`js/api.js`](js/api.js) (`tryBackend` → public API → sample), so you
+can point `CP.config.backend.base` at a separately-hosted API if you split the
+frontend and backend.
+
+Further extensions: aggregate X / Reddit / Telegram social sentiment server-side,
+and swap the built-in macro seed in `js/config.js` for a live economic-calendar API.
+
+---
+
+## ☁️ Deploy
+
+- **Static (no backend):** GitHub Pages, Netlify, Vercel, Cloudflare Pages — drop-in.
+  - GitHub Pages workflow included: [`.github/workflows/pages.yml`](.github/workflows/pages.yml) (auto-deploys `main`).
+  - [`netlify.toml`](netlify.toml) and [`vercel.json`](vercel.json) included.
+- **With backend:** host `server/index.js` on any Node platform (Render, Railway,
+  Fly.io), set the env vars there, and `npm start`.
 
 ---
 
@@ -103,6 +130,8 @@ js/history.js       prediction history + grading
 js/backtest.js      historical replay
 js/render.js        all DOM rendering
 js/app.js           orchestration + refresh loop
+server/index.js     optional Express backend (keyed news/whales/LLM)
+.env.example        backend key template (all optional)
 ```
 
 ---
