@@ -1,0 +1,12 @@
+{
+  "name": "cryptopulse-dashboard",
+  "version": "1.0.0",
+  "description": "Real-time crypto bull/bear prediction dashboard — news, technicals, sentiment, market data and macro in one probability.",
+  "scripts": {
+    "start": "python3 -m http.server 8080",
+    "serve": "npx --yes serve -l 8080 ."
+  },
+  "keywords": ["crypto", "bitcoin", "ethereum", "dashboard", "sentiment", "technical-analysis", "prediction"],
+  "license": "MIT",
+  "private": true
+}

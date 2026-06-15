@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CryptoPulse — Real-Time Bull / Bear Prediction Dashboard</title>
+  <meta name="description" content="Combine news, technical indicators, sentiment and market data into one clear bullish / bearish probability." />
+  <link rel="preconnect" href="https://api.coingecko.com" />
+  <link rel="preconnect" href="https://api.alternative.me" />
+  <link rel="stylesheet" href="css/styles.css" />
+</head>
+<body>
+  <!-- ===================== HEADER ===================== -->
+  <header class="topbar">
+    <div class="brand">
+      <span class="logo">📈</span>
+      <div>
+        <h1>CryptoPulse</h1>
+        <p class="tagline">Real-time bull / bear prediction engine</p>
+      </div>
+    </div>
+    <div class="topbar-right">
+      <span id="liveDot" class="live-dot" title="Live data status"></span>
+      <span id="lastUpdated" class="last-updated">Loading…</span>
+      <button id="refreshBtn" class="btn" title="Refresh now">↻ Refresh</button>
+    </div>
+  </header>
+
+  <!-- ===================== HERO PROBABILITY ===================== -->
+  <section class="hero">
+    <div class="hero-meter">
+      <div class="gauge">
+        <svg viewBox="0 0 200 120" class="gauge-svg" aria-hidden="true">
+          <path class="gauge-track" d="M10 110 A 90 90 0 0 1 190 110" />
+          <path id="gaugeFill" class="gauge-fill" d="M10 110 A 90 90 0 0 1 190 110" />
+          <line id="gaugeNeedle" class="gauge-needle" x1="100" y1="110" x2="100" y2="28" />
+          <circle cx="100" cy="110" r="6" class="gauge-hub" />
+        </svg>
+        <div class="gauge-readout">
+          <div id="heroScore" class="hero-score">--</div>
+          <div class="hero-score-label">/ 100</div>
+        </div>
+      </div>
+      <div class="gauge-scale"><span>Bearish</span><span>Neutral</span><span>Bullish</span></div>
+    </div>
+
+    <div class="hero-summary">
+      <div id="heroDirection" class="hero-direction neutral">ANALYZING…</div>
+      <p class="hero-headline" id="heroHeadline">
+        Aggregating hundreds of signals into one probability…
+      </p>
+      <div class="hero-confidence">
+        <span>Confidence</span>
+        <div class="conf-bar"><div id="confFill" class="conf-fill"></div></div>
+        <span id="confValue">--%</span>
+      </div>
+      <ul id="heroReasons" class="hero-reasons"></ul>
+    </div>
+  </section>
+
+  <!-- ===================== 1. MARKET OVERVIEW ===================== -->
+  <section class="card" id="overview">
+    <div class="card-head">
+      <h2>1 · Market Overview</h2>
+      <span class="card-sub">Composite signal scoreboard</span>
+    </div>
+    <div class="overview-grid" id="overviewGrid">
+      <!-- filled by JS -->
+    </div>
+  </section>
+
+  <div class="grid-2">
+    <!-- ===================== 3. TECHNICAL ANALYSIS ===================== -->
+    <section class="card" id="technical">
+      <div class="card-head">
+        <h2>3 · Technical Analysis</h2>
+        <div class="coin-switch" id="coinSwitch">
+          <button class="coin-btn active" data-coin="bitcoin">BTC</button>
+          <button class="coin-btn" data-coin="ethereum">ETH</button>
+        </div>
+      </div>
+      <div id="technicalBody" class="ta-body">
+        <div class="skeleton">Loading technicals…</div>
+      </div>
+    </section>
+
+    <!-- ===================== 7. AI PREDICTION ENGINE ===================== -->
+    <section class="card" id="aiengine">
+      <div class="card-head">
+        <h2>7 · AI Prediction Engine</h2>
+        <span class="card-sub">7-day outlook</span>
+      </div>
+      <div id="aiBody" class="ai-body">
+        <div class="skeleton">Scoring inputs…</div>
+      </div>
+    </section>
+  </div>
+
+  <div class="grid-2">
+    <!-- ===================== 2. LIVE NEWS FEED ===================== -->
+    <section class="card" id="news">
+      <div class="card-head">
+        <h2>2 · Live News Feed</h2>
+        <span class="card-sub">AI-classified sentiment</span>
+      </div>
+      <div id="newsBody" class="news-body">
+        <div class="skeleton">Loading headlines…</div>
+      </div>
+    </section>
+
+    <!-- ===================== 4. SENTIMENT ANALYSIS ===================== -->
+    <section class="card" id="sentiment">
+      <div class="card-head">
+        <h2>4 · Sentiment Analysis</h2>
+        <span class="card-sub">News &amp; social aggregate</span>
+      </div>
+      <div id="sentimentBody" class="sentiment-body">
+        <div class="skeleton">Analyzing sentiment…</div>
+      </div>
+    </section>
+  </div>
+
+  <div class="grid-2">
+    <!-- ===================== 5. WHALE ACTIVITY ===================== -->
+    <section class="card" id="whales">
+      <div class="card-head">
+        <h2>5 · Whale Activity</h2>
+        <span class="badge badge-sample" title="Requires a Whale Alert / on-chain API key for live data">SAMPLE</span>
+      </div>
+      <div id="whaleBody" class="whale-body">
+        <div class="skeleton">Scanning large transfers…</div>
+      </div>
+    </section>
+
+    <!-- ===================== 6. ECONOMIC CALENDAR ===================== -->
+    <section class="card" id="calendar">
+      <div class="card-head">
+        <h2>6 · Economic Calendar</h2>
+        <span class="card-sub">Macro events &amp; countdowns</span>
+      </div>
+      <div id="calendarBody" class="calendar-body">
+        <div class="skeleton">Loading events…</div>
+      </div>
+    </section>
+  </div>
+
+  <div class="grid-2">
+    <!-- ===================== 8. PRICE ALERTS ===================== -->
+    <section class="card" id="alerts">
+      <div class="card-head">
+        <h2>8 · Price Alerts</h2>
+        <button id="notifyBtn" class="btn btn-sm">Enable notifications</button>
+      </div>
+      <div class="alert-form">
+        <select id="alertMetric">
+          <option value="btc_price">BTC price (USD)</option>
+          <option value="eth_price">ETH price (USD)</option>
+          <option value="btc_rsi">BTC RSI</option>
+          <option value="fng">Fear &amp; Greed</option>
+          <option value="score">AI score</option>
+        </select>
+        <select id="alertOp">
+          <option value="gt">&gt;</option>
+          <option value="lt">&lt;</option>
+        </select>
+        <input id="alertValue" type="number" step="any" placeholder="120000" />
+        <button id="addAlertBtn" class="btn btn-sm btn-primary">Add</button>
+      </div>
+      <label class="alert-news-toggle">
+        <input type="checkbox" id="alertBearishNews" /> Alert on major bearish news
+      </label>
+      <ul id="alertList" class="alert-list"></ul>
+    </section>
+
+    <!-- ===================== 10. PREDICTION HISTORY ===================== -->
+    <section class="card" id="history">
+      <div class="card-head">
+        <h2>10 · Prediction History</h2>
+        <span id="historyAccuracy" class="card-sub">—</span>
+      </div>
+      <div id="historyBody" class="history-body">
+        <div class="skeleton">No predictions recorded yet.</div>
+      </div>
+    </section>
+  </div>
+
+  <!-- ===================== 9. BACKTESTING ===================== -->
+  <section class="card" id="backtest">
+    <div class="card-head">
+      <h2>9 · Backtesting</h2>
+      <div class="backtest-controls">
+        <select id="backtestCoin">
+          <option value="bitcoin">Bitcoin</option>
+          <option value="ethereum">Ethereum</option>
+        </select>
+        <select id="backtestDays">
+          <option value="365">1 year</option>
+          <option value="730">2 years</option>
+          <option value="1095" selected>3 years</option>
+        </select>
+        <button id="runBacktest" class="btn btn-sm btn-primary">Run backtest</button>
+      </div>
+    </div>
+    <p class="card-note">Strategy: <strong>bullish when price &gt; 200-day MA and RSI &gt; 50</strong>. Tests how often the model's direction matched the next day's move.</p>
+    <div id="backtestBody" class="backtest-body">
+      <div class="skeleton">Run a backtest to see historical accuracy.</div>
+    </div>
+  </section>
+
+  <!-- ===================== FOOTER ===================== -->
+  <footer class="footer">
+    <p>
+      <strong>CryptoPulse</strong> · Educational dashboard, <em>not financial advice</em>.
+      Live data: <a href="https://www.coingecko.com/en/api" target="_blank" rel="noopener">CoinGecko</a>,
+      <a href="https://alternative.me/crypto/fear-and-greed-index/" target="_blank" rel="noopener">Alternative.me</a>,
+      <a href="https://min-api.cryptocompare.com/" target="_blank" rel="noopener">CryptoCompare</a>.
+      Items marked <span class="badge badge-sample">SAMPLE</span> need an API key for live data — see README.
+    </p>
+  </footer>
+
+  <!-- Toast container -->
+  <div id="toasts" class="toasts"></div>
+
+  <!-- Scripts (plain scripts so the app also runs from file://) -->
+  <script src="js/config.js"></script>
+  <script src="js/util.js"></script>
+  <script src="js/indicators.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/sentiment.js"></script>
+  <script src="js/score.js"></script>
+  <script src="js/alerts.js"></script>
+  <script src="js/history.js"></script>
+  <script src="js/backtest.js"></script>
+  <script src="js/render.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
