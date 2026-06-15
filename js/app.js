@@ -5,15 +5,27 @@
     data: null, result: null, currentCoin: "bitcoin", selectedCoin: "bitcoin", timer: null,
     markets: [], marketsById: {}, coinCache: {}, currentPlan: null,
     search: "", sort: "market_cap", calcSide: "long", calcPrimed: false,
+    live: false, lastUpdate: 0, chartCache: {},
   };
+
+  // 365-day charts barely move intraday — cache them so the fast 30s refresh
+  // only re-pulls light price/market data (keeps us "live" without rate limits).
+  function getChartCached(id) {
+    var c = CP.state.chartCache[id];
+    if (c && Date.now() - c.time < CP.config.chartTTL) return Promise.resolve(c.chart);
+    return CP.api.getMarketChart(id, 365).then(function (chart) {
+      if (chart.live) CP.state.chartCache[id] = { time: Date.now(), chart: chart };
+      return chart;
+    });
+  }
 
   function loadAll() {
     return Promise.all([
       CP.api.getSimple(),
       CP.api.getGlobal(),
       CP.api.getFearGreed(),
-      CP.api.getMarketChart("bitcoin", 365),
-      CP.api.getMarketChart("ethereum", 365),
+      getChartCached("bitcoin"),
+      getChartCached("ethereum"),
       CP.api.getNews(),
     ]).then(function (res) {
       var simple = res[0], global = res[1], fg = res[2], btcChart = res[3], ethChart = res[4], news = res[5];
@@ -65,8 +77,30 @@
       CP.history.record(result.direction, d.simple.bitcoin.usd);
       CP.render.renderHistory();
 
-      var allLive = simple.live && global.live && fg.live && btcChart.live && ethChart.live && news.live;
-      CP.render.setStatus(allLive, new Date());
+      // "Live" = real market prices + at least one real price chart. News / F&G
+      // / global falling back to cache shouldn't downgrade the whole dashboard.
+      CP.state.live = !!(simple.live && (btcChart.live || ethChart.live));
+      CP.state.lastUpdate = Date.now();
+      tickStatus();
+  }
+
+  // Ticks every second so the clock is always live and "updated Xs ago" counts up.
+  function tickStatus() {
+    var dot = U.el("liveDot");
+    if (!dot) return;
+    var live = CP.state.live;
+    dot.className = "live-dot " + (live ? "live" : "demo");
+    dot.title = live ? "Live market data" : "Reconnecting to live data…";
+    var now = new Date();
+    var label;
+    if (!CP.state.lastUpdate) {
+      label = "Connecting…";
+    } else {
+      var ago = Math.max(0, Math.round((Date.now() - CP.state.lastUpdate) / 1000));
+      label = (live ? "🟢 Pro · Live" : "🟠 Reconnecting") + " · " + now.toLocaleTimeString() +
+        " · updated " + ago + "s ago";
+    }
+    U.el("lastUpdated").textContent = label;
   }
 
   function paint(d, result) {
@@ -296,9 +330,11 @@
   // ---- Boot ----
   function start() {
     wire();
+    tickStatus();                 // show "Connecting…" immediately
     loadAll();
     loadMarkets();
     CP.state.timer = setInterval(loadAll, CP.config.refreshInterval);
+    setInterval(tickStatus, 1000); // live clock + "updated Xs ago"
     setInterval(function () { loadMarkets(); }, 2 * CP.config.refreshInterval); // refresh screener prices
     // keep calendar countdowns ticking even between data refreshes
     setInterval(function () { CP.render.renderCalendar(computeEvents()); }, 60000);

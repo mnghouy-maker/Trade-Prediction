@@ -3,8 +3,10 @@
 window.CP = window.CP || {};
 
 CP.config = {
-  // Auto-refresh interval for live data (ms)
-  refreshInterval: 60 * 1000,
+  // Auto-refresh interval for live market data (ms)
+  refreshInterval: 30 * 1000,
+  // Heavy 365-day charts (for indicators/backtest) refetch at most this often (ms)
+  chartTTL: 5 * 60 * 1000,
 
   // Coins tracked in the technical section
   coins: [
