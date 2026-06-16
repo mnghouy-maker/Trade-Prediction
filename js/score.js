@@ -37,7 +37,13 @@ CP.score = (function () {
     var fgv = fg > 55 ? 1 : fg < 45 ? -1 : 0;
     if (fgv !== 0) add("fearGreed", "Fear & Greed in " + (fgv > 0 ? "greed" : "fear") + " (" + fg + ")", fgv, W.fearGreed);
 
-    add("newsSentiment", "News sentiment " + d.sentiment.verdict.toLowerCase(), d.sentiment.net > 0 ? 1 : d.sentiment.net < 0 ? -1 : 0, W.newsSentiment);
+    var sentVal = d.sentiment.net > 0 ? 1 : d.sentiment.net < 0 ? -1 : 0;
+    // If fear level is high, override sentiment signal to bearish regardless of net
+    if (d.sentiment.fearLevel >= 40) sentVal = -1;
+    var sentLabel = "News sentiment " + d.sentiment.verdict.toLowerCase();
+    if (d.sentiment.fearLevel >= 60) sentLabel = "High market fear detected (" + d.sentiment.fearLevel + "/100)";
+    else if (d.sentiment.fearLevel >= 40) sentLabel = "Elevated fear in news (" + d.sentiment.fearLevel + "/100)";
+    add("newsSentiment", sentLabel, sentVal, W.newsSentiment);
 
     // Volume: rising 24h vol with positive price = demand; with negative price = selling pressure
     if (btc) {

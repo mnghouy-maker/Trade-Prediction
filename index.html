@@ -3,299 +3,459 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>CryptoPulse — Real-Time Bull / Bear Prediction Dashboard</title>
-  <meta name="description" content="Combine news, technical indicators, sentiment and market data into one clear bullish / bearish probability." />
+  <title>CryptoPulse — Real-Time Bull / Bear Prediction</title>
+  <meta name="description" content="Real-time crypto prediction engine combining news, technicals, sentiment and macro data into one clear bull/bear signal." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="preconnect" href="https://api.coingecko.com" />
   <link rel="preconnect" href="https://api.alternative.me" />
-  <link rel="stylesheet" href="css/styles.css?v=3" />
+  <link rel="stylesheet" href="css/styles.css?v=8" />
 </head>
 <body>
-  <!-- ===================== HEADER ===================== -->
+
+  <!-- ===================== TOP BAR ===================== -->
   <header class="topbar">
     <div class="brand">
-      <span class="logo">📈</span>
+      <div class="logo">
+        <!-- Lucide: trending-up -->
+        <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/>
+          <polyline points="16 7 22 7 22 13"/>
+        </svg>
+      </div>
       <div>
         <h1>CryptoPulse</h1>
-        <p class="tagline">Real-time bull / bear prediction engine</p>
+        <p class="tagline">Real-time prediction engine</p>
       </div>
     </div>
     <div class="topbar-right">
       <span id="liveDot" class="live-dot" title="Live data status"></span>
-      <span id="lastUpdated" class="last-updated">Loading…</span>
-      <button id="refreshBtn" class="btn" title="Refresh now">↻ Refresh</button>
+      <span id="lastUpdated" class="last-updated">Connecting…</span>
+      <button id="refreshBtn" class="btn btn-sm btn-icon">
+        <!-- Lucide: refresh-cw -->
+        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+          <path d="M21 3v5h-5"/>
+          <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+          <path d="M8 16H3v5"/>
+        </svg>
+        Refresh
+      </button>
     </div>
   </header>
 
-  <!-- ===================== HERO PROBABILITY ===================== -->
-  <section class="hero">
-    <div class="hero-meter">
-      <div class="gauge">
-        <svg viewBox="0 0 200 120" class="gauge-svg" aria-hidden="true">
-          <path class="gauge-track" d="M10 110 A 90 90 0 0 1 190 110" />
-          <path id="gaugeFill" class="gauge-fill" d="M10 110 A 90 90 0 0 1 190 110" />
-          <line id="gaugeNeedle" class="gauge-needle" x1="100" y1="110" x2="100" y2="28" />
-          <circle cx="100" cy="110" r="6" class="gauge-hub" />
+  <!-- ===================== TAB NAV ===================== -->
+  <nav class="tab-nav" id="tabNav">
+
+    <button class="tab-btn active" data-tab="dashboard">
+      <svg class="tab-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Lucide: layout-dashboard -->
+        <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+        <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+      </svg>
+      <span class="tab-label">Dashboard</span>
+    </button>
+
+    <button class="tab-btn" data-tab="markets">
+      <svg class="tab-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Lucide: bar-chart-2 -->
+        <line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/>
+        <line x1="6" y1="20" x2="6" y2="14"/>
+      </svg>
+      <span class="tab-label">Markets</span>
+    </button>
+
+    <button class="tab-btn" data-tab="analysis">
+      <svg class="tab-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Lucide: activity -->
+        <polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/>
+      </svg>
+      <span class="tab-label">Analysis</span>
+    </button>
+
+    <button class="tab-btn" data-tab="trade">
+      <svg class="tab-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Lucide: crosshair -->
+        <circle cx="12" cy="12" r="10"/><line x1="22" y1="12" x2="18" y2="12"/>
+        <line x1="6" y1="12" x2="2" y2="12"/><line x1="12" y1="6" x2="12" y2="2"/>
+        <line x1="12" y1="22" x2="12" y2="18"/>
+      </svg>
+      <span class="tab-label">Trade</span>
+    </button>
+
+    <button class="tab-btn" data-tab="news">
+      <svg class="tab-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Lucide: newspaper -->
+        <path d="M4 3h16a1 1 0 0 1 1 1v14a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V4a1 1 0 0 1 1-1z"/>
+        <path d="M8 7h8"/><path d="M8 11h8"/><path d="M8 15h5"/>
+      </svg>
+      <span class="tab-label">News</span>
+    </button>
+
+    <button class="tab-btn" data-tab="tools">
+      <svg class="tab-icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Lucide: settings-2 -->
+        <path d="M20 7H9"/><path d="M14 17H3"/>
+        <circle cx="17" cy="17" r="3"/><circle cx="7" cy="7" r="3"/>
+      </svg>
+      <span class="tab-label">Tools</span>
+    </button>
+
+  </nav>
+
+  <!-- ===================== TAB: DASHBOARD ===================== -->
+  <div class="tab-panel active" id="tab-dashboard">
+
+    <!-- Fear alert banner -->
+    <div id="fearBanner" class="fear-banner hidden">
+      <svg class="fear-icon" xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <!-- Lucide: alert-triangle -->
+        <path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/>
+        <line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/>
+      </svg>
+      <div class="fear-text">
+        <strong id="fearTitle">Market Fear Alert</strong>
+        <span id="fearDesc">High-impact bearish event detected in the news feed.</span>
+      </div>
+      <button class="fear-close" id="fearClose" aria-label="Dismiss">
+        <!-- Lucide: x -->
+        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"
+          stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
         </svg>
-        <div class="gauge-readout">
-          <div id="heroScore" class="hero-score">--</div>
-          <div class="hero-score-label">/ 100</div>
+      </button>
+    </div>
+
+    <!-- Hero: score + direction -->
+    <div class="hero">
+      <div class="hero-gauge-wrap">
+        <div class="gauge">
+          <svg viewBox="0 0 200 120" class="gauge-svg" aria-hidden="true">
+            <path class="gauge-track" d="M10 110 A 90 90 0 0 1 190 110" />
+            <path id="gaugeFill" class="gauge-fill" d="M10 110 A 90 90 0 0 1 190 110" />
+            <line id="gaugeNeedle" class="gauge-needle" x1="100" y1="110" x2="100" y2="28" />
+            <circle cx="100" cy="110" r="6" class="gauge-hub" />
+          </svg>
+          <div class="gauge-readout">
+            <div id="heroScore" class="hero-score">--</div>
+            <div class="hero-score-label">/ 100</div>
+          </div>
         </div>
+        <div class="gauge-scale"><span>Bear</span><span>Neutral</span><span>Bull</span></div>
       </div>
-      <div class="gauge-scale"><span>Bearish</span><span>Neutral</span><span>Bullish</span></div>
-    </div>
 
-    <div class="hero-summary">
-      <div id="heroDirection" class="hero-direction neutral">ANALYZING…</div>
-      <p class="hero-headline" id="heroHeadline">
-        Aggregating hundreds of signals into one probability…
-      </p>
-      <div class="hero-confidence">
-        <span>Confidence</span>
-        <div class="conf-bar"><div id="confFill" class="conf-fill"></div></div>
-        <span id="confValue">--%</span>
-      </div>
-      <ul id="heroReasons" class="hero-reasons"></ul>
-    </div>
-  </section>
-
-  <!-- ===================== 1. MARKET OVERVIEW ===================== -->
-  <section class="card" id="overview">
-    <div class="card-head">
-      <h2>1 · Market Overview</h2>
-      <span class="card-sub">Composite signal scoreboard</span>
-    </div>
-    <div class="overview-grid" id="overviewGrid">
-      <!-- filled by JS -->
-    </div>
-  </section>
-
-  <!-- ===================== COIN SCREENER (all coins) ===================== -->
-  <section class="card" id="screener">
-    <div class="card-head">
-      <h2>🔎 Coin Screener — pick what to trade</h2>
-      <div class="screener-tools">
-        <input id="coinSearch" type="text" placeholder="Search by name or symbol…" autocomplete="off" />
-        <select id="screenerSort">
-          <option value="market_cap">Sort: Market cap</option>
-          <option value="score">Sort: Signal score</option>
-          <option value="change24h">Sort: 24h change</option>
-          <option value="volume">Sort: Volume</option>
-        </select>
-        <select id="screenerCount">
-          <option value="100">Top 100</option>
-          <option value="150">Top 150</option>
-          <option value="250">Top 250</option>
-        </select>
-      </div>
-    </div>
-    <p class="card-note">Live signal per coin from price action &amp; momentum (RSI / 7-day trend). Click any row to load it into the analysis, trade signal &amp; calculator below.</p>
-    <div id="screenerBody" class="screener-body"><div class="skeleton">Loading coins…</div></div>
-  </section>
-
-  <div class="grid-2">
-    <!-- ===================== 3. TECHNICAL ANALYSIS ===================== -->
-    <section class="card" id="technical">
-      <div class="card-head">
-        <h2>3 · Technical Analysis <span id="techCoinLabel" class="card-sub"></span></h2>
-        <div class="coin-switch" id="coinSwitch">
-          <button class="coin-btn active" data-coin="bitcoin">BTC</button>
-          <button class="coin-btn" data-coin="ethereum">ETH</button>
+      <div class="hero-info">
+        <div id="heroDirection" class="hero-direction neutral">ANALYZING…</div>
+        <p class="hero-headline" id="heroHeadline">Aggregating signals…</p>
+        <div class="hero-confidence">
+          <span class="conf-label">Confidence</span>
+          <div class="conf-bar"><div id="confFill" class="conf-fill"></div></div>
+          <span id="confValue" class="conf-num">--%</span>
         </div>
+        <ul id="heroReasons" class="hero-reasons"></ul>
       </div>
-      <div id="technicalBody" class="ta-body">
-        <div class="skeleton">Loading technicals…</div>
-      </div>
-    </section>
+    </div>
 
-    <!-- ===================== 7. AI PREDICTION ENGINE ===================== -->
-    <section class="card" id="aiengine">
+    <!-- Quick price strip -->
+    <div class="price-strip" id="priceStrip">
+      <div class="price-card" id="priceBTC">
+        <div class="pc-label">Bitcoin</div>
+        <div class="pc-price">--</div>
+        <div class="pc-change">--</div>
+      </div>
+      <div class="price-card" id="priceETH">
+        <div class="pc-label">Ethereum</div>
+        <div class="pc-price">--</div>
+        <div class="pc-change">--</div>
+      </div>
+      <div class="price-card" id="priceFG">
+        <div class="pc-label">Fear &amp; Greed</div>
+        <div class="pc-price">--</div>
+        <div class="pc-change">--</div>
+      </div>
+      <div class="price-card" id="priceMCap">
+        <div class="pc-label">Market Cap</div>
+        <div class="pc-price">--</div>
+        <div class="pc-change">--</div>
+      </div>
+    </div>
+
+    <!-- Signal overview grid -->
+    <div class="card">
       <div class="card-head">
-        <h2>7 · AI Prediction Engine</h2>
-        <span class="card-sub">7-day outlook</span>
+        <h2>Market Signals</h2>
+        <span class="card-sub">Composite scoreboard</span>
       </div>
-      <div id="aiBody" class="ai-body">
-        <div class="skeleton">Scoring inputs…</div>
+      <div class="overview-grid" id="overviewGrid">
+        <div class="skeleton">Loading signals…</div>
       </div>
-    </section>
+    </div>
+
   </div>
 
-  <div class="grid-2">
-    <!-- ===================== TRADE SIGNAL — WHEN TO ENTER ===================== -->
-    <section class="card" id="tradeSignal">
+  <!-- ===================== TAB: MARKETS ===================== -->
+  <div class="tab-panel" id="tab-markets">
+    <div class="card">
       <div class="card-head">
-        <h2>🎯 Trade Signal — when to enter</h2>
-        <span id="tradeCoinLabel" class="card-sub">BTC</span>
-      </div>
-      <div id="tradeBody" class="trade-body"><div class="skeleton">Building trade plan…</div></div>
-    </section>
-
-    <!-- ===================== PROFIT CALCULATOR (Binance-style) ===================== -->
-    <section class="card" id="calculator">
-      <div class="card-head">
-        <h2>🧮 Profit Calculator</h2>
-        <span class="card-sub">Futures PnL · ROE · liquidation</span>
-      </div>
-      <div class="calc">
-        <div class="calc-side-toggle">
-          <button class="calc-side active" data-side="long">▲ Long</button>
-          <button class="calc-side" data-side="short">▼ Short</button>
+        <h2>Coin Screener</h2>
+        <div class="screener-tools">
+          <input id="coinSearch" type="text" placeholder="Search coin…" autocomplete="off" />
+          <select id="screenerSort">
+            <option value="market_cap">Market cap</option>
+            <option value="score">Signal score</option>
+            <option value="change24h">24h change</option>
+            <option value="volume">Volume</option>
+          </select>
+          <select id="screenerCount">
+            <option value="100">Top 100</option>
+            <option value="150">Top 150</option>
+            <option value="250">Top 250</option>
+          </select>
         </div>
-        <div class="calc-grid">
-          <label>Entry price (USD)<input id="calcEntry" type="number" step="any" placeholder="0.00" /></label>
-          <label>Exit price (USD)<input id="calcExit" type="number" step="any" placeholder="0.00" /></label>
-          <label>Quantity (coins)<input id="calcQty" type="number" step="any" placeholder="0.00" /></label>
-          <label>Leverage (x)<input id="calcLev" type="number" step="1" min="1" max="125" value="10" /></label>
-          <label>Fee per side (%)<input id="calcFee" type="number" step="any" value="0.05" /></label>
-          <label>or Position size (USD)<input id="calcNotional" type="number" step="any" placeholder="auto" /></label>
+      </div>
+      <p class="card-note">Live signal per coin from price action and momentum. Click any row to view its details in the Tools tab.</p>
+      <div id="screenerBody" class="screener-body"><div class="skeleton">Loading coins…</div></div>
+    </div>
+  </div>
+
+  <!-- ===================== TAB: ANALYSIS ===================== -->
+  <div class="tab-panel" id="tab-analysis">
+    <div class="grid-2">
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Technical Analysis <span id="techCoinLabel" class="card-sub"></span></h2>
+          <div class="coin-switch" id="coinSwitch">
+            <button class="coin-btn active" data-coin="bitcoin">BTC</button>
+            <button class="coin-btn" data-coin="ethereum">ETH</button>
+          </div>
         </div>
-        <div class="calc-presets">
-          <button class="btn btn-sm" id="calcUseLive">Entry = live price</button>
-          <button class="btn btn-sm" id="calcUseTP">Exit = TP1</button>
-          <button class="btn btn-sm" id="calcUseStop">Exit = Stop</button>
+        <div id="technicalBody" class="ta-body">
+          <div class="skeleton">Loading technicals…</div>
         </div>
-        <div id="calcResults" class="calc-results"><div class="skeleton">Enter values to calculate.</div></div>
       </div>
-    </section>
-  </div>
 
-  <div class="grid-2">
-    <!-- ===================== 2. LIVE NEWS FEED ===================== -->
-    <section class="card" id="news">
+      <div class="card">
+        <div class="card-head">
+          <h2>AI Prediction Engine</h2>
+          <span class="card-sub">7-day outlook</span>
+        </div>
+        <div id="aiBody" class="ai-body">
+          <div class="skeleton">Scoring inputs…</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="card">
       <div class="card-head">
-        <h2>2 · Live News Feed</h2>
-        <span class="card-sub">AI-classified sentiment</span>
+        <h2>Backtesting</h2>
+        <div class="backtest-controls">
+          <select id="backtestCoin">
+            <option value="bitcoin">Bitcoin</option>
+            <option value="ethereum">Ethereum</option>
+          </select>
+          <select id="backtestDays">
+            <option value="365">1 year</option>
+            <option value="730">2 years</option>
+            <option value="1095" selected>3 years</option>
+          </select>
+          <button id="runBacktest" class="btn btn-sm btn-primary">Run backtest</button>
+        </div>
       </div>
-      <div id="newsBody" class="news-body">
-        <div class="skeleton">Loading headlines…</div>
-      </div>
-    </section>
-
-    <!-- ===================== 4. SENTIMENT ANALYSIS ===================== -->
-    <section class="card" id="sentiment">
-      <div class="card-head">
-        <h2>4 · Sentiment Analysis</h2>
-        <span class="card-sub">News &amp; social aggregate</span>
-      </div>
-      <div id="sentimentBody" class="sentiment-body">
-        <div class="skeleton">Analyzing sentiment…</div>
-      </div>
-    </section>
-  </div>
-
-  <div class="grid-2">
-    <!-- ===================== 5. WHALE ACTIVITY ===================== -->
-    <section class="card" id="whales">
-      <div class="card-head">
-        <h2>5 · Whale Activity</h2>
-        <span class="badge badge-sample" title="Requires a Whale Alert / on-chain API key for live data">SAMPLE</span>
-      </div>
-      <div id="whaleBody" class="whale-body">
-        <div class="skeleton">Scanning large transfers…</div>
-      </div>
-    </section>
-
-    <!-- ===================== 6. ECONOMIC CALENDAR ===================== -->
-    <section class="card" id="calendar">
-      <div class="card-head">
-        <h2>6 · Economic Calendar</h2>
-        <span class="card-sub">Macro events &amp; countdowns</span>
-      </div>
-      <div id="calendarBody" class="calendar-body">
-        <div class="skeleton">Loading events…</div>
-      </div>
-    </section>
-  </div>
-
-  <div class="grid-2">
-    <!-- ===================== 8. PRICE ALERTS ===================== -->
-    <section class="card" id="alerts">
-      <div class="card-head">
-        <h2>8 · Price Alerts</h2>
-        <button id="notifyBtn" class="btn btn-sm">Enable notifications</button>
-      </div>
-      <div class="alert-form">
-        <select id="alertMetric">
-          <option value="btc_price">BTC price (USD)</option>
-          <option value="eth_price">ETH price (USD)</option>
-          <option value="btc_rsi">BTC RSI</option>
-          <option value="fng">Fear &amp; Greed</option>
-          <option value="score">AI score</option>
-        </select>
-        <select id="alertOp">
-          <option value="gt">&gt;</option>
-          <option value="lt">&lt;</option>
-        </select>
-        <input id="alertValue" type="number" step="any" placeholder="120000" />
-        <button id="addAlertBtn" class="btn btn-sm btn-primary">Add</button>
-      </div>
-      <label class="alert-news-toggle">
-        <input type="checkbox" id="alertBearishNews" /> Alert on major bearish news
-      </label>
-      <ul id="alertList" class="alert-list"></ul>
-    </section>
-
-    <!-- ===================== 10. PREDICTION HISTORY ===================== -->
-    <section class="card" id="history">
-      <div class="card-head">
-        <h2>10 · Prediction History</h2>
-        <span id="historyAccuracy" class="card-sub">—</span>
-      </div>
-      <div id="historyBody" class="history-body">
-        <div class="skeleton">No predictions recorded yet.</div>
-      </div>
-    </section>
-  </div>
-
-  <!-- ===================== 9. BACKTESTING ===================== -->
-  <section class="card" id="backtest">
-    <div class="card-head">
-      <h2>9 · Backtesting</h2>
-      <div class="backtest-controls">
-        <select id="backtestCoin">
-          <option value="bitcoin">Bitcoin</option>
-          <option value="ethereum">Ethereum</option>
-        </select>
-        <select id="backtestDays">
-          <option value="365">1 year</option>
-          <option value="730">2 years</option>
-          <option value="1095" selected>3 years</option>
-        </select>
-        <button id="runBacktest" class="btn btn-sm btn-primary">Run backtest</button>
+      <p class="card-note">Strategy: bullish when price &gt; 200-day MA and RSI &gt; 50. Tests how often the direction matched the next day's move.</p>
+      <div id="backtestBody" class="backtest-body">
+        <div class="skeleton">Run a backtest to see historical accuracy.</div>
       </div>
     </div>
-    <p class="card-note">Strategy: <strong>bullish when price &gt; 200-day MA and RSI &gt; 50</strong>. Tests how often the model's direction matched the next day's move.</p>
-    <div id="backtestBody" class="backtest-body">
-      <div class="skeleton">Run a backtest to see historical accuracy.</div>
+  </div>
+
+  <!-- ===================== TAB: TRADE ===================== -->
+  <div class="tab-panel" id="tab-trade">
+
+    <!-- Coin lookup — populated when user clicks a screener row or searches here -->
+    <div class="card coin-detail-card">
+      <div class="card-head">
+        <h2>Coin Detail</h2>
+        <div class="coin-detail-search">
+          <input id="tradeCoinSearch" type="text" placeholder="Search coin from screener…" autocomplete="off" />
+        </div>
+      </div>
+      <div id="coinDetailBody" class="coin-detail-body">
+        <div class="skeleton">Click any coin in the Markets tab to see its details here.</div>
+      </div>
+      <div id="tradeCoinSuggest" class="coin-suggest-list"></div>
     </div>
-  </section>
+
+    <div class="grid-2">
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Trade Signal</h2>
+          <span id="tradeCoinLabel" class="card-sub">BTC</span>
+        </div>
+        <div id="tradeBody" class="trade-body"><div class="skeleton">Building trade plan…</div></div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Profit Calculator</h2>
+          <span class="card-sub">Futures PnL · ROE · liquidation</span>
+        </div>
+        <div class="calc">
+          <div class="calc-side-toggle">
+            <button class="calc-side active" data-side="long">Long</button>
+            <button class="calc-side" data-side="short">Short</button>
+          </div>
+          <div class="calc-grid">
+            <label>Entry price (USD)<input id="calcEntry" type="number" step="any" placeholder="0.00" /></label>
+            <label>Exit price (USD)<input id="calcExit" type="number" step="any" placeholder="0.00" /></label>
+            <label>Quantity (coins)<input id="calcQty" type="number" step="any" placeholder="0.00" /></label>
+            <label>Leverage (x)<input id="calcLev" type="number" step="1" min="1" max="125" value="10" /></label>
+            <label>Fee per side (%)<input id="calcFee" type="number" step="any" value="0.05" /></label>
+            <label>Position size (USD)<input id="calcNotional" type="number" step="any" placeholder="auto" /></label>
+          </div>
+          <div class="calc-presets">
+            <button class="btn btn-sm" id="calcUseLive">Entry = live price</button>
+            <button class="btn btn-sm" id="calcUseTP">Exit = TP1</button>
+            <button class="btn btn-sm" id="calcUseStop">Exit = Stop</button>
+          </div>
+          <div id="calcResults" class="calc-results"><div class="skeleton">Enter values to calculate.</div></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===================== TAB: NEWS ===================== -->
+  <div class="tab-panel" id="tab-news">
+    <div class="grid-2">
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Live News Feed</h2>
+          <span class="card-sub" id="newsLiveLabel">AI-classified sentiment</span>
+        </div>
+        <div id="newsBody" class="news-body">
+          <div class="skeleton">Loading headlines…</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Sentiment Analysis</h2>
+          <span class="card-sub">News aggregate</span>
+        </div>
+        <div id="sentimentBody" class="sentiment-body">
+          <div class="skeleton">Analyzing…</div>
+        </div>
+      </div>
+
+    </div>
+
+    <div class="grid-2">
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Whale Activity</h2>
+          <span class="badge badge-sample" title="Requires Whale Alert API key for live data">SAMPLE</span>
+        </div>
+        <div id="whaleBody" class="whale-body">
+          <div class="skeleton">Scanning transfers…</div>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Economic Calendar</h2>
+          <span class="card-sub">Macro events &amp; countdowns</span>
+        </div>
+        <div id="calendarBody" class="calendar-body">
+          <div class="skeleton">Loading events…</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ===================== TAB: TOOLS ===================== -->
+  <div class="tab-panel" id="tab-tools">
+    <div class="grid-2">
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Price Alerts</h2>
+          <button id="notifyBtn" class="btn btn-sm">Enable notifications</button>
+        </div>
+        <div class="alert-form">
+          <select id="alertMetric">
+            <option value="btc_price">BTC price (USD)</option>
+            <option value="eth_price">ETH price (USD)</option>
+            <option value="btc_rsi">BTC RSI</option>
+            <option value="fng">Fear &amp; Greed</option>
+            <option value="score">AI score</option>
+          </select>
+          <select id="alertOp">
+            <option value="gt">&gt;</option>
+            <option value="lt">&lt;</option>
+          </select>
+          <input id="alertValue" type="number" step="any" placeholder="120000" />
+          <button id="addAlertBtn" class="btn btn-sm btn-primary">Add</button>
+        </div>
+        <label class="alert-news-toggle">
+          <input type="checkbox" id="alertBearishNews" /> Alert on major bearish news
+        </label>
+        <ul id="alertList" class="alert-list"></ul>
+      </div>
+
+      <div class="card">
+        <div class="card-head">
+          <h2>Prediction History</h2>
+          <span id="historyAccuracy" class="card-sub">—</span>
+        </div>
+        <div id="historyBody" class="history-body">
+          <div class="skeleton">No predictions recorded yet.</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
 
   <!-- ===================== FOOTER ===================== -->
   <footer class="footer">
     <p>
       <strong>CryptoPulse</strong> · Educational dashboard, <em>not financial advice</em>.
-      Live data: <a href="https://www.coingecko.com/en/api" target="_blank" rel="noopener">CoinGecko</a>,
+      Data: <a href="https://www.coingecko.com/en/api" target="_blank" rel="noopener">CoinGecko</a>,
       <a href="https://alternative.me/crypto/fear-and-greed-index/" target="_blank" rel="noopener">Alternative.me</a>,
-      <a href="https://min-api.cryptocompare.com/" target="_blank" rel="noopener">CryptoCompare</a>.
-      Items marked <span class="badge badge-sample">SAMPLE</span> need an API key for live data — see README.
+      <a href="https://min-api.cryptocompare.com/" target="_blank" rel="noopener">CryptoCompare</a>,
+      <a href="https://www.binance.com" target="_blank" rel="noopener">Binance</a>.
     </p>
   </footer>
 
-  <!-- Toast container -->
   <div id="toasts" class="toasts"></div>
 
-  <!-- Scripts (plain scripts so the app also runs from file://) -->
-  <script src="js/config.js?v=3"></script>
-  <script src="js/util.js?v=3"></script>
-  <script src="js/indicators.js?v=3"></script>
-  <script src="js/api.js?v=3"></script>
-  <script src="js/sentiment.js?v=3"></script>
-  <script src="js/score.js?v=3"></script>
-  <script src="js/alerts.js?v=3"></script>
-  <script src="js/history.js?v=3"></script>
-  <script src="js/backtest.js?v=3"></script>
-  <script src="js/markets.js?v=3"></script>
-  <script src="js/trade.js?v=3"></script>
-  <script src="js/render.js?v=3"></script>
-  <script src="js/app.js?v=3"></script>
+  <script src="js/config.js?v=8"></script>
+  <script src="js/util.js?v=8"></script>
+  <script src="js/indicators.js?v=8"></script>
+  <script src="js/api.js?v=8"></script>
+  <script src="js/sentiment.js?v=8"></script>
+  <script src="js/score.js?v=8"></script>
+  <script src="js/alerts.js?v=8"></script>
+  <script src="js/history.js?v=8"></script>
+  <script src="js/backtest.js?v=8"></script>
+  <script src="js/markets.js?v=8"></script>
+  <script src="js/trade.js?v=8"></script>
+  <script src="js/render.js?v=8"></script>
+  <script src="js/app.js?v=8"></script>
 </body>
 </html>

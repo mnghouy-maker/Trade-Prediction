@@ -40,7 +40,7 @@ CP.alerts = (function () {
       var hit = a.op === "gt" ? v > a.value : v < a.value;
       if (hit && !a.triggered) {
         a.triggered = true;
-        fire("🔔 " + metricLabel(a.metric) + " " + (a.op === "gt" ? ">" : "<") + " " + a.value,
+        fire(metricLabel(a.metric) + " " + (a.op === "gt" ? ">" : "<") + " " + a.value,
           "Now: " + (a.metric.indexOf("price") !== -1 ? U.fmtUSD(v) : Math.round(v)), "bull");
       } else if (!hit && a.triggered) {
         a.triggered = false; // re-arm
@@ -52,7 +52,7 @@ CP.alerts = (function () {
     if (getBearishNews() && snapshot.sentiment.hasHighImpactBearish) {
       if (!CP.alerts._bearFired) {
         CP.alerts._bearFired = true;
-        fire("🔴 Major bearish news detected", "High-impact negative headline in the feed.", "bear");
+        fire("Major bearish news detected", "High-impact negative headline in the feed.", "bear");
       }
     } else {
       CP.alerts._bearFired = false;

@@ -20,6 +20,63 @@ CP.render = (function () {
     U.el("lastUpdated").textContent = (allLive ? "Live · " : "Demo · ") + "updated " + time.toLocaleTimeString();
   }
 
+  // CoinGecko static coin logo URLs — reliable, no extra API call needed
+  var COIN_LOGOS = {
+    bitcoin:  "https://assets.coingecko.com/coins/images/1/small/bitcoin.png",
+    ethereum: "https://assets.coingecko.com/coins/images/279/small/ethereum.png",
+  };
+
+  // ---------- price strip ----------
+  function renderPriceStrip(d) {
+    var btc = d.simple.bitcoin, eth = d.simple.ethereum, fg = d.fearGreed, gl = d.global;
+
+    function logoImg(src) {
+      return src ? '<img class="pc-logo" src="' + src + '" alt="" />' : '';
+    }
+
+    function setCard(id, logoSrc, label, price, change, changeCls) {
+      var el = U.el(id);
+      if (!el) return;
+      // Rebuild the label row with logo if not already done
+      var lbl = el.querySelector(".pc-label");
+      if (logoSrc && !el.querySelector(".pc-logo")) {
+        lbl.innerHTML = logoImg(logoSrc) + U.escapeHtml(label);
+      }
+      el.querySelector(".pc-price").textContent = price;
+      var ch = el.querySelector(".pc-change");
+      ch.textContent = change;
+      ch.className = "pc-change " + (changeCls || "");
+    }
+
+    setCard("priceBTC", COIN_LOGOS.bitcoin, "Bitcoin",
+      U.fmtUSD(btc.usd), U.fmtPct(btc.usd_24h_change, true), U.pctClass(btc.usd_24h_change));
+    setCard("priceETH", COIN_LOGOS.ethereum, "Ethereum",
+      U.fmtUSD(eth.usd), U.fmtPct(eth.usd_24h_change, true), U.pctClass(eth.usd_24h_change));
+    setCard("priceFG", null, "Fear & Greed",
+      fg.value + " — " + fg.label,
+      fg.value > fg.prev ? "▲ from " + fg.prev : "▼ from " + fg.prev,
+      fg.value > fg.prev ? "up" : "down");
+    setCard("priceMCap", null, "Market Cap",
+      U.fmtCompact(gl.marketCap), U.fmtPct(gl.change24h, true), U.pctClass(gl.change24h));
+  }
+
+  // ---------- fear banner ----------
+  function renderFearBanner(sent) {
+    var banner = U.el("fearBanner");
+    if (!banner) return;
+    if (sent.fearLevel >= 40 && sent.fearHeadlines && sent.fearHeadlines.length) {
+      var title = sent.fearLevel >= 70 ? "Extreme Market Fear Detected" :
+                  sent.fearLevel >= 55 ? "High Fear Alert" : "Elevated Fear in News";
+      var desc = sent.fearHeadlines[0];
+      if (sent.fearHeadlines.length > 1) desc += " (+" + (sent.fearHeadlines.length - 1) + " more)";
+      U.el("fearTitle").textContent = title;
+      U.el("fearDesc").textContent = desc;
+      banner.classList.remove("hidden");
+    } else {
+      banner.classList.add("hidden");
+    }
+  }
+
   function toast(msg, kind) {
     var box = U.el("toasts");
     var t = document.createElement("div");
@@ -54,8 +111,8 @@ CP.render = (function () {
     }).slice(0, 5);
     U.el("heroReasons").innerHTML = reasons.map(function (r) {
       var cls = r.value > 0 ? "pos" : r.value < 0 ? "neg" : "";
-      var icon = r.value > 0 ? "▲" : r.value < 0 ? "▼" : "•";
-      return '<li class="' + cls + '">' + icon + " " + U.escapeHtml(r.label) + "</li>";
+      var arrow = r.value > 0 ? "▲" : r.value < 0 ? "▼" : "—";
+      return '<li class="' + cls + '">' + arrow + " " + U.escapeHtml(r.label) + "</li>";
     }).join("");
   }
 
@@ -137,8 +194,8 @@ CP.render = (function () {
         result.probability + "% bullish over 7 days</div>" +
       '<ul class="ai-reasons">' + reasons.map(function (r) {
         var cls = r.value > 0 ? "pos" : r.value < 0 ? "neg" : "";
-        var icon = r.value > 0 ? "🟢" : r.value < 0 ? "🔴" : "⚪";
-        return '<li class="' + cls + '">' + icon + " " + U.escapeHtml(r.label) + "</li>";
+        var arrow = r.value > 0 ? "▲" : r.value < 0 ? "▼" : "—";
+        return '<li class="' + cls + '"><span class="reason-arrow">' + arrow + "</span> " + U.escapeHtml(r.label) + "</li>";
       }).join("") + "</ul>";
   }
 
@@ -147,15 +204,16 @@ CP.render = (function () {
     if (!sent.items.length) { U.el("newsBody").innerHTML = '<div class="skeleton">No headlines.</div>'; return; }
     U.el("newsBody").innerHTML = sent.items.map(function (n) {
       var pillCls = n.label === "Bullish" ? "bull" : n.label === "Bearish" ? "bear" : "neutral";
-      var emoji = n.label === "Bullish" ? "🟢" : n.label === "Bearish" ? "🔴" : "⚪";
       var impCls = n.impact.toLowerCase();
       var titleHtml = n.url && n.url !== "#"
         ? '<a href="' + U.escapeHtml(n.url) + '" target="_blank" rel="noopener">' + U.escapeHtml(n.title) + "</a>"
         : U.escapeHtml(n.title);
-      return '<div class="news-item"><div class="news-item-top">' +
+      var fearTag = n.isFear ? '<span class="pill fear">Fear</span>' : "";
+      var itemClass = "news-item" + (n.isFear ? " fear-item" : "");
+      return '<div class="' + itemClass + '"><div class="news-item-top">' +
         '<span class="news-title">' + titleHtml + "</span>" +
-        '<span class="news-tags"><span class="pill ' + impCls + '">' + n.impact + "</span>" +
-        '<span class="pill ' + pillCls + '">' + emoji + " " + n.label + "</span></span></div>" +
+        '<span class="news-tags">' + fearTag + '<span class="pill ' + impCls + '">' + n.impact + "</span>" +
+        '<span class="pill ' + pillCls + '">' + n.label + "</span></span></div>" +
         '<div class="news-meta"><span>' + U.escapeHtml(n.source || "") + "</span><span>·</span><span>" + U.timeAgo(n.ts) + "</span></div></div>";
     }).join("");
   }
@@ -165,18 +223,24 @@ CP.render = (function () {
     var p = sent.pct;
     var vColor = sent.verdict === "Bullish" ? "var(--bull)" : sent.verdict === "Bearish" ? "var(--bear)" : "var(--neutral)";
     var trendHtml = trending.length
-      ? '<div><div class="card-sub" style="margin-bottom:6px">Trending</div><div class="trending">' +
+      ? '<div><div class="card-sub" style="margin-bottom:6px">Trending topics</div><div class="trending">' +
         trending.map(function (t) { return "<span>#" + U.escapeHtml(t) + "</span>"; }).join("") + "</div></div>"
       : "";
+    var fearLabel = sent.fearLevel >= 70 ? "Extreme" : sent.fearLevel >= 50 ? "High" : sent.fearLevel >= 30 ? "Moderate" : "Low";
+    var fearHtml = '<div class="fear-score-row">' +
+      '<span class="fear-label">Market Fear Level</span>' +
+      '<span class="fear-val">' + sent.fearLevel + '/100 — ' + fearLabel + '</span>' +
+      '</div>';
     U.el("sentimentBody").innerHTML =
       '<div class="sent-bars">' +
         sentRow("Positive", p.pos, "var(--bull)") +
         sentRow("Negative", p.neg, "var(--bear)") +
         sentRow("Neutral", p.neu, "var(--text-dim)") +
       "</div>" +
-      '<div class="sent-verdict" style="color:' + vColor + '">Sentiment = ' + sent.verdict + "</div>" +
+      '<div class="sent-verdict" style="color:' + vColor + '">Overall: ' + sent.verdict + "</div>" +
+      fearHtml +
       trendHtml +
-      '<div class="card-sub">Derived from ' + (sent.items.length) + " live headlines (news-based proxy for social).</div>";
+      '<div class="card-sub">From ' + sent.items.length + " live headlines. Fear score detects panic-inducing events globally.</div>";
   }
   function sentRow(label, pct, color) {
     return '<div class="sent-row"><span class="lbl">' + label + '</span><div class="sent-track">' +
@@ -263,6 +327,37 @@ CP.render = (function () {
         recent + "</tbody></table>";
   }
 
+  // ---------- mini sparkline SVG ----------
+  function sparkSVG(prices, w, h) {
+    if (!prices || prices.length < 2) {
+      return '<svg class="spark-svg" width="' + w + '" height="' + h + '"></svg>';
+    }
+    var min = Math.min.apply(null, prices);
+    var max = Math.max.apply(null, prices);
+    var range = max - min || 1;
+    var step = w / (prices.length - 1);
+    var points = prices.map(function (p, i) {
+      var x = +(i * step).toFixed(2);
+      var y = +(h - ((p - min) / range) * (h - 4) - 2).toFixed(2);
+      return x + "," + y;
+    });
+    var rising = prices[prices.length - 1] >= prices[0];
+    var color = rising ? "var(--bull)" : "var(--bear)";
+    // Build a filled area path under the line
+    var lineD = "M" + points.join("L");
+    var areaD = lineD + "L" + (+(( prices.length - 1) * step).toFixed(2)) + "," + h + "L0," + h + "Z";
+    var gradId = "sg" + Math.random().toString(36).slice(2, 7);
+    return '<svg class="spark-svg" width="' + w + '" height="' + h +
+      '" viewBox="0 0 ' + w + ' ' + h + '" xmlns="http://www.w3.org/2000/svg">' +
+      '<defs><linearGradient id="' + gradId + '" x1="0" y1="0" x2="0" y2="1">' +
+        '<stop offset="0%" stop-color="' + (rising ? "#16c784" : "#f03542") + '" stop-opacity="0.18"/>' +
+        '<stop offset="100%" stop-color="' + (rising ? "#16c784" : "#f03542") + '" stop-opacity="0"/>' +
+      '</linearGradient></defs>' +
+      '<path d="' + areaD + '" fill="url(#' + gradId + ')" />' +
+      '<path d="' + lineD + '" fill="none" stroke="' + color + '" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round" />' +
+      '</svg>';
+  }
+
   // ---------- coin screener ----------
   function renderScreener(coins, selectedId) {
     if (!coins.length) { U.el("screenerBody").innerHTML = '<div class="skeleton">No coins.</div>'; return; }
@@ -271,6 +366,7 @@ CP.render = (function () {
       var barColor = c.score >= 60 ? "var(--bull)" : c.score <= 40 ? "var(--bear)" : "var(--neutral)";
       var d1 = c.change1h, d24 = c.change24h, d7 = c.change7d;
       var img = c.image ? '<img class="coin-img" src="' + U.escapeHtml(c.image) + '" alt="" loading="lazy" />' : "";
+      var spark = sparkSVG(c.spark && c.spark.length > 10 ? c.spark.filter(function(_, i) { return i % 4 === 0; }) : c.spark, 80, 32);
       return '<tr data-coin="' + c.id + '" class="screener-row' + (c.id === selectedId ? " sel" : "") + '">' +
         "<td>" + (c.rank || "") + "</td>" +
         '<td class="coin-cell">' + img + "<span><strong>" + U.escapeHtml(c.symbol) + "</strong> " +
@@ -279,12 +375,13 @@ CP.render = (function () {
         '<td class="' + U.pctClass(d1) + '">' + U.fmtPct(d1, true) + "</td>" +
         '<td class="' + U.pctClass(d24) + '">' + U.fmtPct(d24, true) + "</td>" +
         '<td class="' + U.pctClass(d7) + '">' + U.fmtPct(d7, true) + "</td>" +
+        '<td class="spark-cell">' + spark + "</td>" +
         '<td><div class="score-cell"><div class="score-bar"><div style="width:' + c.score + "%;background:" + barColor + '"></div></div>' +
           '<span class="pill ' + sigCls + '">' + c.score + "</span></div></td></tr>";
     }).join("");
     U.el("screenerBody").innerHTML =
       '<div class="screener-scroll"><table class="data screener-table"><thead><tr>' +
-      "<th>#</th><th>Coin</th><th>Price</th><th>1h</th><th>24h</th><th>7d</th><th>Signal</th>" +
+      "<th>#</th><th>Coin</th><th>Price</th><th>1h</th><th>24h</th><th>7d</th><th>7d Chart</th><th>Signal</th>" +
       "</tr></thead><tbody>" + rows + "</tbody></table></div>";
   }
 
@@ -325,6 +422,65 @@ CP.render = (function () {
       (pct ? ' <span class="lvl-pct">' + pct + "</span>" : "") + "</span></div>";
   }
 
+  // ---------- coin detail (Tools tab) ----------
+  function renderCoinDetail(coin, tech) {
+    var el = U.el("coinDetailBody");
+    if (!el) return;
+    if (!coin) {
+      el.innerHTML = '<div class="skeleton">Click any coin in the Markets tab to see its details here.</div>';
+      return;
+    }
+    var change24 = coin.change24h || 0;
+    var change7 = coin.change7d || 0;
+    var change1 = coin.change1h || 0;
+    var sigCls = coin.signal === "Bullish" ? "bull" : coin.signal === "Bearish" ? "bear" : "neutral";
+    var imgHtml = coin.image
+      ? '<img src="' + U.escapeHtml(coin.image) + '" width="40" height="40" style="border-radius:50%" />'
+      : '<div style="width:40px;height:40px;border-radius:50%;background:var(--card2);display:inline-block"></div>';
+
+    var spark = sparkSVG(
+      coin.spark && coin.spark.length > 10 ? coin.spark.filter(function(_, i) { return i % 4 === 0; }) : (coin.spark || []),
+      220, 56
+    );
+
+    var techRows = "";
+    if (tech && tech.rsi != null) {
+      techRows =
+        '<div class="cd-metrics">' +
+        cdMetric("RSI (14)", tech.rsi.toFixed(1)) +
+        cdMetric("50d MA", U.fmtUSD(tech.sma50)) +
+        cdMetric("200d MA", U.fmtUSD(tech.sma200)) +
+        (tech.macd ? cdMetric("MACD", tech.macd.bullish ? "Bullish" : "Bearish") : "") +
+        "</div>";
+    }
+
+    el.innerHTML =
+      '<div class="cd-header">' +
+        imgHtml +
+        '<div class="cd-name-block">' +
+          '<div class="cd-name">' + U.escapeHtml(coin.name) + ' <span class="cd-sym">' + U.escapeHtml(coin.symbol) + '</span></div>' +
+          '<div class="cd-rank">Rank #' + (coin.rank || "—") + '</div>' +
+        '</div>' +
+        '<div class="cd-price-block">' +
+          '<div class="cd-price">' + U.fmtUSD(coin.price, coin.price < 1 ? 4 : 2) + '</div>' +
+          '<div class="cd-change ' + U.pctClass(change24) + '">' + U.fmtPct(change24, true) + ' (24h)</div>' +
+        '</div>' +
+      '</div>' +
+      '<div class="cd-changes">' +
+        '<div class="cd-ch-item"><span class="cd-ch-label">1h</span><span class="' + U.pctClass(change1) + '">' + U.fmtPct(change1, true) + '</span></div>' +
+        '<div class="cd-ch-item"><span class="cd-ch-label">24h</span><span class="' + U.pctClass(change24) + '">' + U.fmtPct(change24, true) + '</span></div>' +
+        '<div class="cd-ch-item"><span class="cd-ch-label">7d</span><span class="' + U.pctClass(change7) + '">' + U.fmtPct(change7, true) + '</span></div>' +
+        '<div class="cd-ch-item"><span class="cd-ch-label">Vol</span><span>' + U.fmtCompact(coin.volume) + '</span></div>' +
+        '<div class="cd-ch-item"><span class="cd-ch-label">Mkt Cap</span><span>' + U.fmtCompact(coin.marketCap) + '</span></div>' +
+        '<div class="cd-ch-item"><span class="cd-ch-label">Signal</span><span class="pill ' + sigCls + '">' + coin.score + ' ' + coin.signal + '</span></div>' +
+      '</div>' +
+      '<div class="cd-spark">' + spark + '</div>' +
+      techRows;
+  }
+  function cdMetric(k, v) {
+    return '<div class="cd-metric"><span class="cd-mk">' + k + '</span><span class="cd-mv">' + v + '</span></div>';
+  }
+
   // ---------- profit calculator ----------
   function renderCalc(r) {
     var pnlColor = r.net >= 0 ? "var(--bull)" : "var(--bear)";
@@ -345,10 +501,12 @@ CP.render = (function () {
   }
 
   return {
-    setStatus: setStatus, toast: toast, renderHero: renderHero, renderOverview: renderOverview,
-    renderTechnical: renderTechnical, renderAI: renderAI, renderNews: renderNews,
-    renderSentiment: renderSentiment, renderWhales: renderWhales, renderCalendar: renderCalendar,
-    renderAlerts: renderAlerts, renderHistory: renderHistory, renderBacktest: renderBacktest,
-    renderScreener: renderScreener, renderTrade: renderTrade, renderCalc: renderCalc,
+    setStatus: setStatus, toast: toast,
+    renderHero: renderHero, renderOverview: renderOverview, renderPriceStrip: renderPriceStrip,
+    renderFearBanner: renderFearBanner, renderTechnical: renderTechnical, renderAI: renderAI,
+    renderNews: renderNews, renderSentiment: renderSentiment, renderWhales: renderWhales,
+    renderCalendar: renderCalendar, renderAlerts: renderAlerts, renderHistory: renderHistory,
+    renderBacktest: renderBacktest, renderScreener: renderScreener, renderTrade: renderTrade,
+    renderCalc: renderCalc, renderCoinDetail: renderCoinDetail,
   };
 })();

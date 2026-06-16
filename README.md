@@ -1,157 +1,131 @@
-# 📈 CryptoPulse — Real-Time Bull / Bear Prediction Dashboard
+# CryptoPulse — Real-Time Bull / Bear Prediction Dashboard
 
-Combine **news, technical indicators, sentiment, market data, whale activity and macro events** into one dashboard that turns hundreds of signals into a single clear probability:
+Combine **news, technical indicators, fear detection, sentiment, whale activity and macro events** into one dashboard that turns hundreds of signals into a single clear prediction:
 
-> **“Market is 74% bullish over the next 7 days.”**
+> **"Market is 74% bullish over the next 7 days — high confidence."**
 
-It is a **zero-build, zero-API-key** static web app. All live data is fetched in the
-browser from free, CORS-enabled public APIs, and every indicator, score and backtest
-is computed client-side. There is nothing to install — just open it.
+Zero build, zero required API keys. All live data fetched in the browser from free public APIs. Just open the file.
 
 ---
 
-## ✨ What's inside (all 10 sections)
+## What's inside
 
-| # | Section | Source |
-|---|---------|--------|
-| 0 | **Hero probability gauge** — one bull/bear meter, score 0–100, confidence, reasons | computed |
-| 1 | **Market Overview** — BTC/ETH trend, market cap, Fear & Greed, overall signal | CoinGecko + Alternative.me |
-| 2 | **Live News Feed** — headlines with impact level + AI sentiment | CryptoCompare |
-| 3 | **Technical Analysis** — price, 24h, volume, RSI, MACD, 50/200-day MA, % bullish | CoinGecko (computed) |
-| 4 | **Sentiment Analysis** — positive/negative/neutral %, trending coins | news-derived |
-| 5 | **Whale Activity** — large transfers, exchange in/out flow *(sample data)* | sample* |
-| 6 | **Economic Calendar** — FOMC / CPI / NFP / GDP with countdowns | built-in seed |
-| 7 | **AI Prediction Engine** — weighted score, direction, confidence, reasons | computed |
-| 8 | **Price Alerts** — BTC/ETH price, RSI, F&G, AI score, bearish-news + browser notifications | local |
-| 9 | **Backtesting** — replay the model over 1–3 years, win rate / profit factor / accuracy | CoinGecko (computed) |
-| 10 | **Prediction History** — every daily call graded against the real move | localStorage |
+The dashboard is organized into **6 tabs** so you can focus on what matters:
 
-### 🛠️ Trading tools
+### Dashboard
+The first thing you see. Big bull/bear score (0–100), direction with confidence, and the top signals driving the call. Includes a live **Fear Alert banner** that appears when a panic-triggering event is detected in the news — exchange hacks, government bans, military conflict, bank failures, etc.
 
-| Tool | What it does | Source |
-|------|--------------|--------|
-| **Coin Screener** | All top 100–250 coins, searchable & sortable, each with a live 0–100 bull/bear signal (RSI + 7-day trend). Click a row to load it everywhere below. | CoinGecko `/coins/markets` |
-| **Trade Signal — when to enter** | Turns indicators into **BUY / SELL / WAIT** with **entry, stop-loss, 3 take-profit targets, risk:reward and confidence** for the selected coin. Waits on overbought/oversold/mixed setups. | computed |
-| **Profit Calculator** | Binance-style futures **PnL / ROE / liquidation** — long or short, leverage, fees, by quantity or position size. One-click fill from the live price, TP or stop. | computed |
+### Markets
+Coin screener for the top 100–250 coins. Each row shows live price, 1h/24h/7d change, a mini 7-day sparkline chart, and a bull/bear signal score. Click any row to load that coin into the Analysis and Trade tabs.
 
-\* Whale flows and true social-media (X/Reddit/Telegram) sentiment require paid API
-keys, so they ship as clearly-labelled **SAMPLE** data. See *Optional backend* below.
+### Analysis
+- **Technical Analysis** — price, RSI, MACD, 50-day and 200-day moving averages, % bullish checklist. Switch between BTC, ETH, or any coin selected from the screener.
+- **AI Prediction Engine** — the weighted signal breakdown showing exactly why the model is bullish or bearish.
+- **Backtesting** — replay the model over 1–3 years of history to see direction accuracy, win rate and profit factor.
 
-> **How to use it:** scan the **screener** for a coin with a strong signal → click it
-> to see its **technical breakdown** and **trade plan** (entry/stop/targets) → drop the
-> numbers into the **calculator** to size the trade and see your potential profit, ROE
-> and liquidation price before you place it.
+### Trade
+- **Trade Signal** — BUY / SELL / WAIT with entry price, stop loss, three take-profit targets, and risk:reward ratio for the selected coin.
+- **Profit Calculator** — Binance-style futures PnL, ROE and liquidation price. Long or short, leverage, fees, by quantity or by position size. One-click fill from the live price, TP or stop.
+
+### News
+- **Live News Feed** — headlines from CryptoCompare, each classified as Bullish / Bearish / Neutral with an impact level. Fear-triggering headlines are flagged with a warning tag.
+- **Sentiment Analysis** — positive/negative/neutral breakdown plus a **Fear Level score (0–100)** derived from how many panic-inducing events are in the current news cycle.
+- **Whale Activity** — large BTC transfers between wallets and exchanges *(sample data — requires Whale Alert key for live)*.
+- **Economic Calendar** — upcoming FOMC / CPI / NFP / GDP events with live countdowns.
+
+### Tools
+- **Price Alerts** — set alerts on BTC/ETH price, RSI, Fear & Greed index, or AI score. Fires browser notifications when triggered.
+- **Prediction History** — every daily prediction graded against the real next-day BTC move, with running accuracy %.
 
 ---
 
-## 🧮 How the score works
+## How the score works
 
-Each signal contributes **+1 (bullish)** or **−1 (bearish)**, weighted by importance:
+Each signal contributes **+1 (bullish)** or **-1 (bearish)**, weighted by importance:
 
 ```
-BTC above 200-day MA   = +1      Total market cap up    = +1
-BTC above 50-day MA    = +1      Fear & Greed > 55      = +1
-RSI > 50 (not >70)     = +1      Positive news          = +1
-MACD bullish crossover = +1      Whales leaving exchange= +1
-ETH above 200-day MA   = +1      High selling volume    = -1
+BTC above 200-day MA       x1.4    Total market cap change   x1.0
+BTC above 50-day MA        x1.0    Fear & Greed index        x1.0
+RSI (not overbought)       x1.2    News sentiment            x1.3
+MACD bullish crossover     x1.1    Whale exchange flows      x0.9
+ETH above 200-day MA       x0.9    Volume trend              x0.8
 ```
 
-- **Raw signal sum** → direction: `≥ 3 = Bullish`, `0–2 = Neutral`, `< 0 = Bearish`.
-- **Weighted sum** is normalised to a **0–100 AI score** (read as *% bullish over 7 days*).
-- **Confidence** = how lopsided the signals are (agreement %).
+- **Raw signal sum** → direction: `≥ 3 = Bullish`, `0–2 = Neutral`, `< 0 = Bearish`
+- **Weighted sum** normalized to a **0–100 AI score**
+- **Confidence** = signal agreement %
+- **Fear override** — if the Fear Level hits 40+, the news signal is forced bearish even if headlines are mixed
 
-Indicator math (SMA, EMA, **Wilder's RSI(14)**, **MACD 12/26/9**) lives in
-[`js/indicators.js`](js/indicators.js); the engine is in [`js/score.js`](js/score.js).
+The fear detector scans for high-impact phrases: exchange collapses, government bans, war declarations, SEC charges, bank failures, stablecoin depegs, liquidation cascades, and more. One major fear event shifts the prediction even if technicals look fine.
 
 ---
 
-## 🚀 Run it
+## Run it
 
-**Option A — just open the file (fully standalone, no install)**
-
+**Option A — open directly (no install)**
 ```bash
-open index.html        # macOS   (or double-click it)
+open index.html
 ```
 
 **Option B — static server**
-
 ```bash
-npm run static         # -> python3 -m http.server 8080
+npm run static    # python3 -m http.server 8080
 ```
 
-or any static server: `npx serve`, VS Code Live Server, etc.
-
-**Option C — with the optional backend (real keys for news/whales/LLM)**
-
+**Option C — with the optional backend**
 ```bash
-npm install            # express (+ optional dotenv)
-cp .env.example .env   # add any keys you have (all optional)
-npm start              # -> http://localhost:8080
-```
-
-The backend serves the same dashboard and, when keys are present, upgrades the
-news, whale and sentiment data. The frontend auto-detects it: served by the
-backend it uses the keyed routes; on GitHub Pages / `file://` it falls straight
-back to the free public APIs and sample data. **It always works either way.**
-
----
-
-## 🔌 Optional backend & live keys
-
-[`server/index.js`](server/index.js) is a small Express app. All keys are
-**optional** — set only what you have in `.env` (see [`.env.example`](.env.example)):
-
-| Env var | Upgrades | Without it |
-|---------|----------|------------|
-| `CRYPTOPANIC_TOKEN` | Real news feed ([CryptoPanic](https://cryptopanic.com/developers/api/)) | Free CryptoCompare feed |
-| `WHALE_ALERT_KEY` | Live exchange flows ([Whale Alert](https://docs.whale-alert.io/)) | Clearly-labelled SAMPLE whales |
-| `ANTHROPIC_API_KEY` | LLM headline sentiment (Claude) | Built-in keyword classifier |
-
-Keys stay server-side — they are never shipped to the browser. The data layer is
-isolated in [`js/api.js`](js/api.js) (`tryBackend` → public API → sample), so you
-can point `CP.config.backend.base` at a separately-hosted API if you split the
-frontend and backend.
-
-Further extensions: aggregate X / Reddit / Telegram social sentiment server-side,
-and swap the built-in macro seed in `js/config.js` for a live economic-calendar API.
-
----
-
-## ☁️ Deploy
-
-- **Static (no backend):** GitHub Pages, Netlify, Vercel, Cloudflare Pages — drop-in.
-  - GitHub Pages workflow included: [`.github/workflows/pages.yml`](.github/workflows/pages.yml) (auto-deploys `main`).
-  - [`netlify.toml`](netlify.toml) and [`vercel.json`](vercel.json) included.
-- **With backend:** host `server/index.js` on any Node platform (Render, Railway,
-  Fly.io), set the env vars there, and `npm start`.
-
----
-
-## 📁 Structure
-
-```
-index.html          markup for all sections
-css/styles.css      dark dashboard theme
-js/config.js        endpoints, weights, calendar seed
-js/util.js          formatting + fetch helpers
-js/indicators.js    SMA / EMA / RSI / MACD
-js/api.js           data fetching with graceful sample fallback
-js/sentiment.js     keyword news-sentiment classifier
-js/score.js         signal builder + 0–100 engine
-js/alerts.js        price alerts + notifications
-js/history.js       prediction history + grading
-js/backtest.js      historical replay
-js/markets.js       coin universe + per-coin screener signal
-js/trade.js         entry/stop/target engine + PnL calculator math
-js/render.js        all DOM rendering
-js/app.js           orchestration + refresh loop
-server/index.js     optional Express backend (keyed news/whales/LLM)
-.env.example        backend key template (all optional)
+npm install
+cp .env.example .env    # add any keys you have
+npm start               # http://localhost:8080
 ```
 
 ---
 
-## ⚠️ Disclaimer
+## Optional backend keys
 
-For **education and research only**. Crypto markets are volatile; this is **not
-financial advice**. Sample-labelled sections are illustrative, not real-time.
+All keys are optional. Set them in `.env` to upgrade specific data sources:
+
+| Key | Upgrades | Without it |
+|-----|----------|------------|
+| `CRYPTOPANIC_TOKEN` | Real news feed from CryptoPanic | Free CryptoCompare feed |
+| `WHALE_ALERT_KEY` | Live on-chain whale transfers | Sample data |
+| `ANTHROPIC_API_KEY` | Claude LLM headline sentiment | Built-in keyword classifier |
+
+Keys stay server-side, never sent to the browser.
+
+---
+
+## Deploy
+
+- **Static (no backend):** GitHub Pages, Netlify, Vercel, Cloudflare Pages — drop-in. GitHub Pages workflow is included and auto-deploys on push to `main`.
+- **With backend:** host `server/index.js` on Render, Railway, Fly.io, or any Node platform. Set env vars there and `npm start`.
+
+---
+
+## File structure
+
+```
+index.html          tabbed layout — Dashboard, Markets, Analysis, Trade, News, Tools
+css/styles.css      dark theme with Inter font
+js/config.js        API endpoints, signal weights, economic calendar seed
+js/util.js          formatting and fetch helpers
+js/indicators.js    SMA / EMA / RSI(14) / MACD(12,26,9)
+js/api.js           all data fetching — always degrades to sample gracefully
+js/sentiment.js     news classifier + fear level detector
+js/score.js         signal builder → 0–100 AI score + fear override
+js/alerts.js        price alerts and browser notifications
+js/history.js       daily prediction recording and grading
+js/backtest.js      historical model replay
+js/markets.js       coin screener with sparkline signals
+js/trade.js         entry/stop/target engine + futures PnL math
+js/render.js        all DOM rendering including sparklines and fear banner
+js/app.js           orchestration, tab wiring, refresh loop
+server/index.js     optional Express backend for keyed data sources
+.env.example        backend key template
+```
+
+---
+
+## Disclaimer
+
+For education and research only. Crypto markets are highly volatile. This is not financial advice. Sections marked SAMPLE use illustrative data, not live feeds.

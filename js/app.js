@@ -90,15 +90,14 @@
     if (!dot) return;
     var live = CP.state.live;
     dot.className = "live-dot " + (live ? "live" : "demo");
-    dot.title = live ? "Live market data" : "Reconnecting to live data…";
+    dot.title = live ? "Live market data" : "Connecting to live data…";
     var now = new Date();
     var label;
     if (!CP.state.lastUpdate) {
       label = "Connecting…";
     } else {
       var ago = Math.max(0, Math.round((Date.now() - CP.state.lastUpdate) / 1000));
-      label = (live ? "🟢 Pro · Live" : "🟠 Reconnecting") + " · " + now.toLocaleTimeString() +
-        " · updated " + ago + "s ago";
+      label = (live ? "Live" : "Reconnecting") + " · " + now.toLocaleTimeString() + " · updated " + ago + "s ago";
     }
     U.el("lastUpdated").textContent = label;
   }
@@ -118,6 +117,7 @@
       CP.state.live = true;
       CP.state.lastUpdate = Date.now();
       refreshPriceUI();
+      tickStatus();
     });
   }
 
@@ -138,11 +138,15 @@
     if (entry && entry.tech) {
       CP.render.renderTechnical({ symbol: meta.symbol, tech: entry.tech, change24h: meta.change24h, volume: meta.volume });
     }
+    // Also refresh the price strip on the dashboard
+    if (CP.state.data) CP.render.renderPriceStrip(CP.state.data);
   }
 
   function paint(d, result) {
     CP.render.renderHero(result, d);
+    CP.render.renderPriceStrip(d);
     CP.render.renderOverview(d, result);
+    CP.render.renderFearBanner(d.sentiment);
     CP.render.renderAI(result, d);
     CP.render.renderNews(d.sentiment);
     CP.render.renderSentiment(d.sentiment, d.trending);
@@ -153,13 +157,13 @@
   // ---- Selected-coin: technical + trade plan + calculator priming ----
   function metaFor(id) {
     var m = CP.state.marketsById[id];
-    if (m) return { symbol: m.symbol, name: m.name, price: m.price, change24h: m.change24h, volume: m.volume };
+    if (m) return { symbol: m.symbol, name: m.name, price: m.price, change24h: m.change24h, volume: m.volume, image: m.image || null };
     var d = CP.state.data;
     if (d && d.simple[id]) {
       var sym = id === "ethereum" ? "ETH" : id === "bitcoin" ? "BTC" : id.toUpperCase();
-      return { symbol: sym, name: sym, price: d.simple[id].usd, change24h: d.simple[id].usd_24h_change, volume: d.simple[id].usd_24h_vol };
+      return { symbol: sym, name: sym, price: d.simple[id].usd, change24h: d.simple[id].usd_24h_change, volume: d.simple[id].usd_24h_vol, image: null };
     }
-    return { symbol: id.toUpperCase(), name: id, price: null, change24h: 0, volume: 0 };
+    return { symbol: id.toUpperCase(), name: id, price: null, change24h: 0, volume: 0, image: null };
   }
 
   function techFor(id) {
@@ -175,14 +179,50 @@
     CP.state.selectedCoin = id;
     CP.state.currentCoin = id;
     var meta = metaFor(id);
+
+    // Update the BTC/ETH switcher buttons — if the coin is one of them mark it active,
+    // otherwise clear both so neither appears selected (altcoin mode).
     document.querySelectorAll(".coin-btn").forEach(function (b) {
       b.classList.toggle("active", b.getAttribute("data-coin") === id);
     });
-    U.el("tradeCoinLabel").textContent = meta.symbol;
+
+    // Show the selected coin's logo + symbol in the switcher area if it's an altcoin
+    var switchEl = U.el("coinSwitch");
+    var existing = switchEl ? switchEl.querySelector(".coin-btn-selected") : null;
+    if (switchEl) {
+      if (id !== "bitcoin" && id !== "ethereum") {
+        if (!existing) {
+          var altBtn = document.createElement("span");
+          altBtn.className = "coin-btn-selected";
+          switchEl.appendChild(altBtn);
+        }
+        var logoHtml = meta.image
+          ? '<img src="' + U.escapeHtml(meta.image) + '" width="14" height="14" style="border-radius:50%;vertical-align:middle;margin-right:4px" />'
+          : "";
+        switchEl.querySelector(".coin-btn-selected").innerHTML = logoHtml + U.escapeHtml(meta.symbol);
+      } else {
+        if (existing) existing.remove();
+      }
+    }
+
+    // Update trade label with logo if available
+    var tradeLbl = U.el("tradeCoinLabel");
+    if (tradeLbl) {
+      var tlogoHtml = meta.image
+        ? '<img src="' + U.escapeHtml(meta.image) + '" width="16" height="16" style="border-radius:50%;vertical-align:middle;margin-right:5px" />'
+        : "";
+      tradeLbl.innerHTML = tlogoHtml + U.escapeHtml(meta.symbol);
+    }
+
     if (!isRefresh) {
       CP.render.renderTechnical({ tech: null, symbol: meta.symbol });
-      U.el("tradeBody").innerHTML = '<div class="skeleton">Building trade plan for ' + meta.symbol + "…</div>";
+      U.el("tradeBody").innerHTML = '<div class="skeleton">Building trade plan for ' + U.escapeHtml(meta.symbol) + "…</div>";
     }
+
+    // Show the coin in the Tools detail panel immediately with screener data
+    var screenerCoin = CP.state.marketsById[id] || null;
+    CP.render.renderCoinDetail(screenerCoin, null);
+
     techFor(id).then(function (entry) {
       CP.render.renderTechnical({ symbol: meta.symbol, tech: entry.tech, change24h: meta.change24h, volume: meta.volume });
       var plan = CP.trade.buildPlan(entry.tech, entry.chart.closes);
@@ -190,6 +230,8 @@
       CP.render.renderTrade(plan, meta.symbol, entry.tech.price);
       primeCalculator(entry.tech.price, plan);
       if (CP.state.markets.length) CP.render.renderScreener(filteredSortedMarkets(), id);
+      // Update detail panel with full tech data once loaded
+      CP.render.renderCoinDetail(screenerCoin, entry.tech);
     });
   }
 
@@ -231,8 +273,12 @@
 
   // ---- Screener ----
   function loadMarkets(count) {
-    U.el("screenerBody").innerHTML = '<div class="skeleton">Loading coins…</div>';
-    return CP.markets.getMarkets(count || +U.el("screenerCount").value).then(function (res) {
+    var n = count || +U.el("screenerCount").value;
+    var msg = n > 100
+      ? 'Loading ' + n + ' coins (fetching multiple pages — may take a few seconds)…'
+      : 'Loading coins…';
+    U.el("screenerBody").innerHTML = '<div class="skeleton">' + msg + '</div>';
+    return CP.markets.getMarkets(n).then(function (res) {
       CP.state.markets = res.coins;
       CP.state.marketsById = {};
       res.coins.forEach(function (c) { CP.state.marketsById[c.id] = c; });
@@ -290,8 +336,31 @@
     });
   }
 
+  // ---- Tab navigation ----
+  function switchTab(name) {
+    document.querySelectorAll(".tab-btn").forEach(function (b) {
+      b.classList.toggle("active", b.getAttribute("data-tab") === name);
+    });
+    document.querySelectorAll(".tab-panel").forEach(function (p) {
+      p.classList.toggle("active", p.id === "tab-" + name);
+    });
+  }
+
+  function wireTabNav() {
+    var nav = U.el("tabNav");
+    if (!nav) return;
+    nav.addEventListener("click", function (e) {
+      var btn = e.target.closest(".tab-btn");
+      if (!btn) return;
+      switchTab(btn.getAttribute("data-tab"));
+    });
+    var fc = U.el("fearClose");
+    if (fc) fc.addEventListener("click", function () { U.el("fearBanner").classList.add("hidden"); });
+  }
+
   // ---- Wiring ----
   function wire() {
+    wireTabNav();
     U.el("refreshBtn").addEventListener("click", function () { loadAll(); });
 
     U.el("coinSwitch").addEventListener("click", function (e) {
@@ -313,11 +382,44 @@
     U.el("screenerBody").addEventListener("click", function (e) {
       var row = e.target.closest(".screener-row");
       if (!row) return;
-      CP.state.calcPrimed = false; // re-prime calc for the newly chosen coin
+      CP.state.calcPrimed = false;
       ["calcEntry", "calcExit", "calcQty"].forEach(function (id) { U.el(id).value = ""; });
       selectCoin(row.getAttribute("data-coin"));
-      U.el("tradeSignal").scrollIntoView({ behavior: "smooth", block: "start" });
+      switchTab("trade");
     });
+
+    // Trade tab coin search
+    var tradeSearchEl = U.el("tradeCoinSearch");
+    var tradeSuggestEl = U.el("tradeCoinSuggest");
+    if (tradeSearchEl) {
+      tradeSearchEl.addEventListener("input", function (e) {
+        var q = (e.target.value || "").toLowerCase().trim();
+        if (!q || !CP.state.markets.length) { tradeSuggestEl.innerHTML = ""; return; }
+        var matches = CP.state.markets.filter(function (c) {
+          return c.name.toLowerCase().indexOf(q) !== -1 || c.symbol.toLowerCase().indexOf(q) !== -1;
+        }).slice(0, 6);
+        if (!matches.length) { tradeSuggestEl.innerHTML = '<div class="coin-suggest-none">No coins found.</div>'; return; }
+        tradeSuggestEl.innerHTML = matches.map(function (c) {
+          var img = c.image ? '<img src="' + U.escapeHtml(c.image) + '" width="20" height="20" style="border-radius:50%;margin-right:7px;vertical-align:middle" />' : "";
+          return '<div class="coin-suggest-item" data-coin="' + U.escapeHtml(c.id) + '">' +
+            img + '<strong>' + U.escapeHtml(c.symbol) + '</strong> <span>' + U.escapeHtml(c.name) + '</span></div>';
+        }).join("");
+      });
+      tradeSuggestEl.addEventListener("click", function (e) {
+        var item = e.target.closest(".coin-suggest-item");
+        if (!item) return;
+        tradeSearchEl.value = "";
+        tradeSuggestEl.innerHTML = "";
+        CP.state.calcPrimed = false;
+        ["calcEntry", "calcExit", "calcQty"].forEach(function (id) { U.el(id).value = ""; });
+        selectCoin(item.getAttribute("data-coin"));
+      });
+      document.addEventListener("click", function (e) {
+        if (!tradeSearchEl.contains(e.target) && !tradeSuggestEl.contains(e.target)) {
+          tradeSuggestEl.innerHTML = "";
+        }
+      });
+    }
 
     // Calculator: live recompute + side toggle + presets
     ["calcEntry", "calcExit", "calcQty", "calcLev", "calcFee", "calcNotional"].forEach(function (id) {

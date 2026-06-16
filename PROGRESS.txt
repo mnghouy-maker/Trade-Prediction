@@ -1,0 +1,109 @@
+===========================================
+DATE: 6/16/2026 (Session 4 — coin detail panel + screener fixes)
+-------------------------------------------
+DONE TODAY (Session 4):
+- Fixed markets.js error propagation: first-page failure now throws properly instead
+  of silently resolving to [] and falling to sample data (was the root cause of
+  Top 100 showing sample coins after the multi-page rewrite)
+- Added 429 retry improvement: validates response is Array before returning
+- Tools tab: added Coin Detail panel at the top — shows logo, name, rank, live price,
+  24h/1h/7d changes, volume, market cap, signal score, 7d sparkline, and RSI/MA/MACD
+  once full tech data loads
+- Tools tab: added coin search box so user can look up any coin from the screener
+  without leaving the Tools tab — shows dropdown suggestions, click to load detail
+- Screener row click now navigates to Tools tab (was Trade tab) so user sees full
+  coin info immediately
+- All cache busters bumped to v7
+
+DECISIONS MADE:
+- Coin detail goes in Tools (not a new tab) to keep the navigation simple
+- Tech indicators (RSI, MAs) load progressively — basic info shows instantly,
+  full indicators appear once the 365-day chart finishes fetching
+
+STILL PENDING / NEXT TIME:
+- localStorage cache for market data (5-min TTL) to speed up Markets tab loads
+- Push to GitHub
+
+===========================================
+DATE: 6/16/2026 (Session 3 — polish & bug fixes)
+-------------------------------------------
+DONE TODAY (Session 3):
+- BTC/ETH logos added to price strip cards (fetched from CoinGecko static assets)
+- Coin switcher: when altcoin selected from screener, shows logo + symbol badge
+- Screener click now auto-switches to Trade tab so user sees the plan immediately
+- "Reconnecting" bug fixed: priceTick() now calls tickStatus() after success
+- Double-dot bug fixed: removed emoji (🟢 🟠) from status label text
+- All emoji removed from UI text per CLAUDE.md rule 4 (render.js, alerts.js, app.js)
+- Screener sample fallback expanded from 10 to 30 coins
+- CoinGecko rate-limit retry: waits 8s and retries once on 429 response
+- Tab switching extracted to reusable switchTab() function
+- CSS v6: coin-btn-selected style, pc-logo sizing, fear-close SVG alignment
+
+DONE TODAY (Session 2):
+- Full tabbed navigation UI (v5):
+    - 6 tabs: Dashboard, Markets, Analysis, Trade, News, Tools
+    - Top tab bar on desktop, icon-only compact nav on mobile
+    - Each section now focused and easy to read — no more single long scroll
+- Dashboard tab:
+    - Hero gauge + bull/bear score front and center
+    - Live price strip: BTC, ETH, Fear & Greed, Market Cap — always visible
+    - Signal overview grid below
+    - Fear Alert banner — appears automatically when panic events detected
+- Fear detection engine (sentiment.js):
+    - Expanded keyword list covering exchange collapses, government bans,
+      military conflict, bank failures, SEC charges, stablecoin depegs,
+      liquidation cascades, war, sanctions, nuclear, rate hike surprises
+    - Two-tier: FEAR_HIGH (phrases = +3 fear) and FEAR_MEDIUM (words = +1)
+    - Fear Level score 0–100 shown in Sentiment tab
+    - Fear override: if fearLevel >= 40, news signal forces bearish in score.js
+    - Fear headlines flagged with orange warning tag in News tab
+    - Fear items get left border highlight in news list
+- Price strip added to Dashboard with live Binance 1s updates
+- README fully rewritten to match new tabbed layout and fear detection feature
+- All cache-busters bumped to v5
+
+DECISIONS MADE:
+- Tab labels hidden on mobile (icon only) to fit all 6 tabs on small screens
+- Fear threshold set at 40/100 to trigger override — conservative enough to
+  not false-positive on mild negative news
+- No glassmorphism on cards (performance) — only on topbar
+
+STILL PENDING / NEXT TIME:
+- Nimith to review and give feedback on new layout
+- Could add broader world news source (GNews/NewsData.io) for more fear signals
+===========================================
+DATE: 6/16/2026 (Session 1)
+-------------------------------------------
+DONE TODAY:
+- Full CSS redesign (styles.css v4):
+    - Font upgraded from system stack to Inter (Google Fonts)
+    - Richer dark theme: deeper backgrounds, layered card depth with top-edge highlight and inner gradient
+    - Hero section: larger score, glowing directional text (bull/bear/neutral glow), animated gauge fill with drop-shadow
+    - Buttons: gradient primary, glow hover states
+    - Cards: subtle glass-like top highlight, stronger shadows
+    - Pills/badges: border + glow treatment
+    - Tables: cleaner header styling, faint row separators, hover highlight
+    - Custom thin scrollbars on news, history, screener
+    - Animated background gradient on body
+    - Live dot: pulsing ring glow
+- Added Inter font via Google Fonts preconnect in index.html
+- Bumped cache-buster to v4 on all CSS and JS script tags
+- Sparkline charts (Option B) added to coin screener:
+    - Mini 7-day SVG line chart with filled gradient area under the line
+    - Green line for uptrend, red for downtrend
+    - Drawn from the spark[] array already fetched from CoinGecko
+    - New "7d Chart" column in screener table header
+- Responsive improvements:
+    - Phone (<640px): hero stacks to single column, logo shrinks, last-updated text hidden, screener hides 1h and sparkline cols to save space, calc grid single column
+    - Tablet (960px): overview goes 3-col, hero adjusts to smaller gauge panel
+    - Very small phones (<400px): graceful 2-col overview
+
+DECISIONS MADE:
+- Kept all existing JS logic untouched — only CSS and render.js renderScreener changed
+- Sparkline downsamples the hourly spark array (every 4th point) for cleaner visuals
+- No glassmorphism (backdrop-filter on cards) — kept performance safe, only used it on topbar
+
+STILL PENDING / NEXT TIME:
+- Nimith to review and give feedback
+- Option to remove sparklines if not wanted
+===========================================
