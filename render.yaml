@@ -1,0 +1,22 @@
+# Render Blueprint — deploys the CryptoPulse backend (with real server-side login).
+# In Render: New -> Blueprint -> pick this repo -> branch claude/happy-feynman-mojcxx.
+# Render reads this file and sets everything up; you only type the password.
+services:
+  - type: web
+    name: cryptopulse
+    env: node
+    plan: free
+    branch: claude/happy-feynman-mojcxx
+    buildCommand: npm install
+    startCommand: npm start
+    healthCheckPath: /api/health
+    autoDeploy: true
+    envVars:
+      - key: AUTH_USER
+        value: admin
+      - key: AUTH_PASS
+        sync: false          # Render will prompt you to enter this (stays private)
+      - key: SESSION_SECRET
+        generateValue: true  # Render generates a strong random value for you
+      - key: NODE_VERSION
+        value: "20"

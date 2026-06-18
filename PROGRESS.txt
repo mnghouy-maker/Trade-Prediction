@@ -33,8 +33,10 @@ IMPORTANT — DEPLOYMENT / BRANCHES:
   backend. Branches now diverge on purpose.
 
 STILL PENDING / NEXT TIME (Nimith's calls):
-- Pick a host and deploy happy-feynman (build: npm install; start: npm start;
-  set env: AUTH_PASS=..., SESSION_SECRET=..., optional data keys).
+- Deploy happy-feynman to Render: New -> Blueprint -> pick repo + this branch.
+  render.yaml was added so it's near one-click — Render auto-generates
+  SESSION_SECRET and only prompts for AUTH_PASS. (Any Node host also works:
+  build npm install, start npm start, set AUTH_PASS + SESSION_SECRET.)
 - Decide what happens to the github.io URL once the backend is live: redirect it
   to the backend, or take the Pages site down.
 - Optional: upload a public crypto-wallet image for the login page background.
