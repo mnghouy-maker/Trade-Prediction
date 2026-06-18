@@ -838,7 +838,7 @@ table.data tbody tr:last-child td { border-bottom: none; }
 }
 
 /* ============================================================
-   LOGIN GATE
+   LOGIN GATE (split-panel: photo/brand left, form right)
    ============================================================ */
 .hidden { display: none !important; }
 body.locked { overflow: hidden; }
@@ -851,43 +851,75 @@ body.locked { overflow: hidden; }
   align-items: center;
   justify-content: center;
   padding: 24px;
-  /* Full-bleed background photo: fills any display (incl. 4K), centered, cropped
-     as needed. A dark gradient sits over it for card contrast. Until
-     img/login-bg.jpg exists, the solid color is the graceful fallback. */
-  background-color: #04060b;
+  background-color: #060912;
   background-image:
-    linear-gradient(160deg, rgba(4,6,11,0.35) 0%, rgba(4,6,11,0.68) 100%),
-    url("../img/login-bg.jpg");
-  background-size: cover, cover;
-  background-position: center center, center center;
-  background-repeat: no-repeat, no-repeat;
+    radial-gradient(ellipse 700px 500px at 80% 8%, rgba(61,139,255,0.08), transparent 70%),
+    radial-gradient(ellipse 600px 420px at 12% 92%, rgba(122,92,255,0.07), transparent 70%);
 }
 .login-screen.login-hidden { display: none; }
 
 .login-card {
+  display: flex;
   width: 100%;
-  max-width: 380px;
-  background: rgba(12,16,24,0.82);
+  max-width: 880px;
+  min-height: 520px;
+  background: var(--bg-elev);
   border: 1px solid var(--border);
   border-top-color: var(--border-hi);
-  border-radius: var(--radius);
-  padding: 32px 30px 26px;
+  border-radius: 18px;
   box-shadow: var(--shadow-lg);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  overflow: hidden;
 }
 
-.login-brand { display: flex; align-items: center; gap: 12px; margin-bottom: 22px; }
-.login-brand h1 {
-  font-size: 20px; font-weight: 800;
-  background: linear-gradient(90deg, #e4ecf4, #8ab4ff);
-  -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+/* ---- Left: photo / brand panel ---- */
+.login-aside {
+  position: relative;
+  flex: 0 0 44%;
+  overflow: hidden;
+  color: #fff;
+  /* Crypto-themed fallback shown until img/login-bg.jpg is uploaded. */
+  background: linear-gradient(155deg, #1b2440 0%, #0b1120 55%, #070a12 100%);
 }
-.login-brand .tagline { margin: 0; font-size: 11px; color: var(--text-faint); }
+.login-aside-img {           /* real photo — covers the panel; removes itself if missing */
+  position: absolute; inset: 0;
+  width: 100%; height: 100%;
+  object-fit: cover;
+  z-index: 2;
+}
+.login-aside-glyph {         /* faint wallet watermark behind the photo / on the fallback */
+  position: absolute;
+  z-index: 1;
+  width: 60%; max-width: 220px;
+  top: 50%; left: 50%;
+  transform: translate(-50%, -50%);
+  color: rgba(120,160,255,0.16);
+}
+.login-aside-overlay {       /* darkens the bottom so the brand + tagline stay readable */
+  position: absolute; inset: 0;
+  z-index: 3;
+  background: linear-gradient(to bottom, rgba(6,9,18,0.10) 0%, rgba(6,9,18,0.32) 45%, rgba(6,9,18,0.82) 100%);
+}
+.login-aside-brand {
+  position: absolute; top: 22px; left: 22px;
+  z-index: 4;
+  display: flex; align-items: center; gap: 10px;
+}
+.login-aside-name { font-size: 16px; font-weight: 800; letter-spacing: -0.2px; }
+.login-aside-tag { position: absolute; left: 24px; right: 24px; bottom: 26px; z-index: 4; }
+.login-aside-tag h2 { font-size: 24px; font-weight: 800; line-height: 1.15; margin: 0 0 8px; letter-spacing: -0.4px; }
+.login-aside-tag p { margin: 0; font-size: 13px; color: rgba(228,236,244,0.78); }
 
-.login-prompt { margin: 0 0 18px; font-size: 14px; color: var(--text-dim); }
+/* ---- Right: sign-in form ---- */
+.login-main {
+  flex: 1 1 56%;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 44px 42px;
+}
+.login-title { font-size: 26px; font-weight: 800; letter-spacing: -0.5px; margin: 0 0 24px; }
 
-.login-form { display: flex; flex-direction: column; gap: 14px; }
+.login-form { display: flex; flex-direction: column; gap: 16px; }
 .login-field { display: flex; flex-direction: column; gap: 6px; }
 .login-field span { font-size: 12px; color: var(--text-dim); font-weight: 500; }
 .login-field input {
@@ -896,7 +928,7 @@ body.locked { overflow: hidden; }
   border: 1px solid var(--border);
   color: var(--text);
   border-radius: var(--radius-sm);
-  padding: 11px 13px;
+  padding: 12px 13px;
   font-size: 14px;
   font-family: inherit;
   outline: none;
@@ -904,7 +936,7 @@ body.locked { overflow: hidden; }
 }
 .login-field input:focus { border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-dim); }
 
-.login-submit { width: 100%; margin-top: 4px; padding: 11px; font-size: 14px; text-align: center; }
+.login-submit { width: 100%; margin-top: 6px; padding: 12px; font-size: 14px; text-align: center; }
 
 .login-error {
   min-height: 15px;
@@ -915,8 +947,6 @@ body.locked { overflow: hidden; }
 }
 .login-error.show { opacity: 1; }
 
-.login-note { margin: 18px 0 0; font-size: 11px; color: var(--text-faint); text-align: center; }
-
 .login-card.shake { animation: login-shake 0.4s; }
 @keyframes login-shake {
   0%, 100% { transform: translateX(0); }
@@ -924,6 +954,16 @@ body.locked { overflow: hidden; }
   40%, 80% { transform: translateX(7px); }
 }
 
+/* ---- Responsive: stack photo on top on small screens ---- */
+@media (max-width: 720px) {
+  .login-card { flex-direction: column; min-height: 0; max-width: 420px; }
+  .login-aside { flex: none; height: 150px; }
+  .login-aside-glyph { max-width: 110px; }
+  .login-aside-tag h2 { font-size: 19px; }
+  .login-aside-tag p { display: none; }
+  .login-main { padding: 30px 26px 34px; }
+}
 @media (max-width: 420px) {
-  .login-card { padding: 26px 22px 22px; }
+  .login-screen { padding: 14px; }
+  .login-main { padding: 26px 20px 30px; }
 }

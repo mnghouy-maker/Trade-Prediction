@@ -1,4 +1,37 @@
 ===========================================
+DATE: 6/18/2026 (Session 5b — login redesign)
+-------------------------------------------
+DONE TODAY:
+- Redesigned the login screen into a split-panel layout (inspired by a reference
+  Nimith shared): crypto photo + brand on the LEFT, sign-in form on the RIGHT,
+  inside one rounded card floating on a dark gradient backdrop.
+- Per Nimith: form has ONLY three things — a "User" field, a "Password" field,
+  and a "Login" button. No name/email/terms/social buttons. Kept a small "Log in"
+  title and a hidden error line (shows only on a wrong password).
+- Left panel photo comes from img/login-bg.jpg. If the file is missing, the
+  <img> removes itself (onerror) and a crypto fallback shows: dark gradient +
+  a faint Lucide "wallet" glyph, with the CryptoPulse logo (top) and a tagline
+  "Smarter crypto decisions." (bottom).
+- New CSS classes: .login-aside / -img / -glyph / -overlay / -brand / -name /
+  -tag, and .login-main / .login-title. Old single-card login styles replaced.
+- Responsive: panels sit side by side on desktop; on <=720px the photo becomes
+  a short banner on top and the form sits below.
+- auth.js unchanged — kept the same element IDs (loginUser, loginPass, loginForm,
+  loginError, loginCard, loginScreen), so admin / 97979797 and the session
+  behavior still work.
+- Cache-busters bumped v9 -> v10.
+
+DECISIONS MADE:
+- Kept the app's BLUE accent on the Login button for consistency with the
+  dashboard (the reference was purple — offered Nimith the purple option).
+- Photo: can't fetch/generate it here, so wired the slot + crypto fallback and
+  suggested specific Unsplash/Pexels "crypto wallet" images to drop in.
+
+STILL PENDING / NEXT TIME:
+- Upload a crypto-wallet photo as img/login-bg.jpg (portrait/square, dark) to the
+  live branch; it auto-deploys. Or send a URL and I'll wire it in.
+- Optional: switch the login accent to the reference's purple if Nimith prefers.
+===========================================
 DATE: 6/18/2026 (Session 5 — login gate)
 -------------------------------------------
 DONE TODAY:

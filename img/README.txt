@@ -1,22 +1,28 @@
-Login screen background image
-=============================
+Login screen photo
+==================
 
-The login gate (the sign-in screen before the dashboard) uses a full-screen
-background photo loaded from this folder.
+The sign-in screen is a split panel: a photo/brand panel on the left and the
+login form on the right. The left panel shows a photo loaded from this folder.
 
 Expected file:
     img/login-bg.jpg
 
-To set or change it:
-1. Add your photo to this folder named exactly  login-bg.jpg
-   (a .jpg — if you have a .png, either rename it to login-bg.jpg or tell me and
-   I'll point the CSS at the .png instead).
-2. For a crisp result on large/4K monitors, use a high-resolution source
-   (ideally ~3840x2160 or larger). The CSS scales it to cover the screen, so a
-   small image will look soft when stretched.
+What to use:
+- A crypto-wallet themed photo (hardware wallet, coins, a phone wallet app, etc.).
+- Dark / moody works best so the white "CryptoPulse" logo and the bottom tagline
+  stay readable. The panel is tall and narrow, so a portrait or square-ish image
+  crops better than a wide one (it's shown with object-fit: cover).
 
-The image is referenced in css/styles.css under the "LOGIN GATE" section:
-    background-image: ... url("../img/login-bg.jpg");
+Good free sources (download one, then add it here as login-bg.jpg):
+- Unsplash  https://unsplash.com/s/photos/crypto-wallet
+- Unsplash  https://unsplash.com/s/photos/hardware-wallet
+- Pexels    https://www.pexels.com/search/crypto%20wallet/
 
-Until login-bg.jpg is present, the login screen falls back to a solid dark
-background so it still looks intentional.
+How to set it:
+1. Add your image to this folder named exactly  login-bg.jpg
+   (a .jpg — if you have a .png, rename it or tell me and I'll point at the .png).
+2. Commit it to the live branch (claude/charming-fermat-9ht677) and it auto-deploys.
+
+Until login-bg.jpg exists, the left panel shows a dark gradient with a faint
+wallet glyph, so it still looks intentional. The <img> tag in index.html removes
+itself automatically when the file is missing.
