@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>CryptoPulse — Log in</title>
+  <meta name="robots" content="noindex" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+  <style>
+    :root{ --bg:#060912; --elev:#0c1018; --elev2:#111620; --border:#1c2535;
+      --text:#e4ecf4; --dim:#7d90a8; --faint:#46566a; --accent:#3d8bff; --bear:#f03542; }
+    *{ box-sizing:border-box; }
+    body{ margin:0; min-height:100vh; font-family:'Inter',-apple-system,BlinkMacSystemFont,sans-serif;
+      color:var(--text); background:var(--bg);
+      background-image:radial-gradient(ellipse 700px 500px at 80% 8%, rgba(61,139,255,0.08), transparent 70%),
+        radial-gradient(ellipse 600px 420px at 12% 92%, rgba(122,92,255,0.07), transparent 70%);
+      display:flex; align-items:center; justify-content:center; padding:24px; }
+    .card{ display:flex; width:100%; max-width:880px; min-height:520px; background:var(--elev);
+      border:1px solid var(--border); border-top-color:rgba(255,255,255,0.06);
+      border-radius:18px; box-shadow:0 12px 48px rgba(0,0,0,0.65); overflow:hidden; }
+    .aside{ position:relative; flex:0 0 44%; overflow:hidden; color:#fff;
+      background:linear-gradient(155deg,#1b2440 0%,#0b1120 55%,#070a12 100%); }
+    .glyph{ position:absolute; z-index:1; width:60%; max-width:220px; top:50%; left:50%;
+      transform:translate(-50%,-50%); color:rgba(120,160,255,0.16); }
+    .overlay{ position:absolute; inset:0; z-index:3;
+      background:linear-gradient(to bottom, rgba(6,9,18,0.10) 0%, rgba(6,9,18,0.32) 45%, rgba(6,9,18,0.82) 100%); }
+    .brand{ position:absolute; top:22px; left:22px; z-index:4; display:flex; align-items:center; gap:10px; }
+    .brand .logo{ width:36px; height:36px; border-radius:10px; display:flex; align-items:center; justify-content:center;
+      background:linear-gradient(135deg,var(--accent),#7ab4ff); box-shadow:0 4px 12px rgba(61,139,255,0.22); }
+    .brand .name{ font-size:16px; font-weight:800; letter-spacing:-0.2px; }
+    .tag{ position:absolute; left:24px; right:24px; bottom:26px; z-index:4; }
+    .tag h2{ font-size:24px; font-weight:800; line-height:1.15; margin:0 0 8px; letter-spacing:-0.4px; }
+    .tag p{ margin:0; font-size:13px; color:rgba(228,236,244,0.78); }
+    .main{ flex:1 1 56%; display:flex; flex-direction:column; justify-content:center; padding:44px 42px; }
+    .title{ font-size:26px; font-weight:800; letter-spacing:-0.5px; margin:0 0 24px; }
+    form{ display:flex; flex-direction:column; gap:16px; }
+    .field{ display:flex; flex-direction:column; gap:6px; }
+    .field span{ font-size:12px; color:var(--dim); font-weight:500; }
+    .field input{ width:100%; background:var(--elev2); border:1px solid var(--border); color:var(--text);
+      border-radius:9px; padding:12px 13px; font-size:14px; font-family:inherit; outline:none;
+      transition:border-color .15s, box-shadow .15s; }
+    .field input:focus{ border-color:var(--accent); box-shadow:0 0 0 3px rgba(61,139,255,0.1); }
+    .err{ min-height:15px; font-size:12px; color:var(--bear); opacity:0; transition:opacity .15s; }
+    .err.show{ opacity:1; }
+    button{ width:100%; margin-top:6px; padding:12px; font-size:14px; font-weight:600; font-family:inherit;
+      color:#fff; border:none; border-radius:9px; cursor:pointer; text-align:center;
+      background:linear-gradient(135deg,var(--accent),#6aacff); box-shadow:0 3px 12px rgba(61,139,255,0.22); }
+    button:hover{ filter:brightness(1.08); }
+    button:disabled{ opacity:.6; cursor:default; }
+    .card.shake{ animation:shake .4s; }
+    @keyframes shake{ 0%,100%{transform:translateX(0);} 20%,60%{transform:translateX(-7px);} 40%,80%{transform:translateX(7px);} }
+    @media (max-width:720px){
+      .card{ flex-direction:column; min-height:0; max-width:420px; }
+      .aside{ flex:none; height:150px; } .glyph{ max-width:110px; }
+      .tag h2{ font-size:19px; } .tag p{ display:none; } .main{ padding:30px 26px 34px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="card" id="loginCard">
+    <div class="aside">
+      <svg class="glyph" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
+        stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+        <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/>
+        <path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/>
+      </svg>
+      <div class="overlay"></div>
+      <div class="brand">
+        <span class="logo">
+          <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none"
+            stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+            <polyline points="22 7 13.5 15.5 8.5 10.5 2 17"/><polyline points="16 7 22 7 22 13"/>
+          </svg>
+        </span>
+        <span class="name">CryptoPulse</span>
+      </div>
+      <div class="tag">
+        <h2>Smarter crypto decisions.</h2>
+        <p>Real-time bull &amp; bear signals, in one view.</p>
+      </div>
+    </div>
+    <div class="main">
+      <h1 class="title">Log in</h1>
+      <form id="loginForm" autocomplete="off">
+        <label class="field"><span>User</span>
+          <input id="loginUser" type="text" autocomplete="username" spellcheck="false" /></label>
+        <label class="field"><span>Password</span>
+          <input id="loginPass" type="password" autocomplete="current-password" /></label>
+        <div id="loginError" class="err" role="alert"></div>
+        <button type="submit">Login</button>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    (function () {
+      var form = document.getElementById("loginForm");
+      var err = document.getElementById("loginError");
+      var card = document.getElementById("loginCard");
+      var passEl = document.getElementById("loginPass");
+      function fail(msg) {
+        err.textContent = msg; err.classList.add("show");
+        card.classList.remove("shake"); void card.offsetWidth; card.classList.add("shake");
+      }
+      form.addEventListener("submit", function (e) {
+        e.preventDefault();
+        err.classList.remove("show");
+        var btn = form.querySelector("button");
+        btn.disabled = true;
+        fetch("/api/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            user: document.getElementById("loginUser").value,
+            pass: passEl.value,
+          }),
+        }).then(function (r) {
+          if (r.ok) {
+            // Let the client-side gate (if present) pass through without a second prompt.
+            try { sessionStorage.setItem("cp_auth_v1", "1"); } catch (e) {}
+            window.location.href = "/";
+          } else {
+            btn.disabled = false;
+            fail(r.status === 503 ? "Login is not set up on the server yet." : "Incorrect username or password.");
+            passEl.value = ""; passEl.focus();
+          }
+        }).catch(function () {
+          btn.disabled = false;
+          fail("Could not reach the server. Please try again.");
+        });
+      });
+      document.getElementById("loginUser").focus();
+    })();
+  </script>
+</body>
+</html>

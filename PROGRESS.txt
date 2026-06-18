@@ -1,4 +1,44 @@
 ===========================================
+DATE: 6/18/2026 (Session 5d — REAL backend auth)
+-------------------------------------------
+DONE TODAY:
+- Built genuine server-side login in server/index.js (Express). The password is
+  checked on the server and never reaches the browser; the dashboard files AND
+  data APIs are only served to a logged-in session (HMAC-signed HttpOnly cookie,
+  12h). This is the real fix the client-side gate could never be.
+  * Public routes: GET /login (self-contained page), POST /api/login,
+    POST /api/logout, GET /api/health.
+  * Auth gate middleware: unauthenticated HTML -> 302 /login, other -> 401.
+  * Protected: GET / + /index.html (injects window.CP_SERVER_AUTH so the old
+    client gate is skipped — no double login), /api/news, /api/whales, and all
+    static assets (js/css).
+- Credentials come from ENV VARS, never the repo/browser:
+    AUTH_USER (default admin), AUTH_PASS or AUTH_PASS_HASH (scrypt), SESSION_SECRET.
+  If no password env is set, login is disabled (fail closed).
+- server/login.html: self-contained split-panel login page (inline CSS) that
+  posts to /api/login. .env.example documents all the new vars + a hash generator.
+- js/auth.js: when window.CP_SERVER_AUTH is set, skip the client gate and boot
+  straight in; logout now also clears the server session then goes to /login
+  (falls back to reload on the static build). Same file still works for both.
+- Tested locally with curl: health public; no-cookie HTML -> 302 /login; assets
+  -> 401; wrong password -> 401; correct -> Set-Cookie; with cookie dashboard +
+  assets load; forged cookie rejected; logout 200. All pass.
+- Cache-buster bumped v11 -> v12.
+
+IMPORTANT — DEPLOYMENT / BRANCHES:
+- This needs a Node host (Render/Railway/Fly/etc.) — GitHub Pages CANNOT run it.
+- Built on the DEV branch claude/happy-feynman-mojcxx ONLY. The live Pages branch
+  claude/charming-fermat-9ht677 was deliberately NOT touched, so the current live
+  site keeps working (client-gate version) until Nimith deploys + verifies the
+  backend. Branches now diverge on purpose.
+
+STILL PENDING / NEXT TIME (Nimith's calls):
+- Pick a host and deploy happy-feynman (build: npm install; start: npm start;
+  set env: AUTH_PASS=..., SESSION_SECRET=..., optional data keys).
+- Decide what happens to the github.io URL once the backend is live: redirect it
+  to the backend, or take the Pages site down.
+- Optional: upload a public crypto-wallet image for the login page background.
+===========================================
 DATE: 6/18/2026 (Session 5c — hide password from inspect)
 -------------------------------------------
 DONE TODAY:

@@ -131,7 +131,12 @@ CP.auth = (function () {
 
   function logout() {
     clearAuthed();
-    location.reload();
+    // When served by the backend, also drop the server session, then go to its
+    // login page. On the static build /api/logout doesn't exist, so fall back
+    // to a reload (which re-shows this client-side gate).
+    fetch("/api/logout", { method: "POST" })
+      .then(function (r) { if (r.ok) location.href = "/login"; else location.reload(); })
+      .catch(function () { location.reload(); });
   }
 
   function init() {
@@ -140,7 +145,11 @@ CP.auth = (function () {
     var logoutBtn = document.getElementById("logoutBtn");
     if (logoutBtn) logoutBtn.addEventListener("click", logout);
 
-    if (isAuthed()) {
+    // CP_SERVER_AUTH is injected by the backend (server/index.js) — it only
+    // serves the dashboard to an authenticated session, so the client gate is
+    // unnecessary there and we boot straight in. Otherwise this is the static
+    // build and the client gate applies.
+    if (window.CP_SERVER_AUTH || isAuthed()) {
       unlock();
       if (CP.boot) CP.boot();
     } else {
