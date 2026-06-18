@@ -1,4 +1,40 @@
 ===========================================
+DATE: 6/18/2026 (Session 5 — login gate)
+-------------------------------------------
+DONE TODAY:
+- Added a sign-in screen that gates the whole dashboard. Username "admin",
+  password 97979797. The app does not boot or fetch any data until login
+  succeeds (not just a visual cover).
+- New js/auth.js handles the gate. Password is stored as a SHA-256 hash (not
+  plaintext); includes a self-contained SHA-256 so it also works from file://.
+  Login is remembered for the browser session (sessionStorage). A "Log out"
+  button was added to the top bar.
+- js/app.js: removed the auto-boot; it now exposes CP.boot(), which auth.js
+  calls after a successful sign-in. Guarded against double-boot.
+- index.html: login screen markup + logout button; all cache-busters bumped
+  v8 -> v9; auth.js script tag added (loaded after app.js).
+- css/styles.css: new LOGIN GATE section — full-screen background photo (cover,
+  centered, fits 4K screens), glass sign-in card, form styling, error shake,
+  and a global .hidden utility.
+- Background photo points to img/login-bg.jpg with a dark fallback until the
+  file is added. img/README.txt documents the expected filename + hi-res advice.
+
+DECISIONS MADE:
+- Username + password both required (per Nimith).
+- Stay logged in for the browser session, plus a Log out button (per Nimith).
+- Honesty note: this is a SOFT gate, not real security. The site is public and
+  static, so the check runs in the browser and can be bypassed via dev tools.
+  The hash is obfuscation, not protection. Real auth would need the backend
+  (server/index.js) hosted and authenticating server-side.
+
+STILL PENDING / NEXT TIME:
+- Nimith to upload the login background to img/login-bg.jpg (use a hi-res /
+  ~4K source so it stays sharp on big screens).
+- Deployment: GitHub Pages currently builds from the OLD branch
+  claude/charming-fermat-9ht677, and pushes to main were failing. This change
+  is on claude/happy-feynman-mojcxx, so it will NOT go live until we choose/fix
+  the deploy branch. Needs Nimith's call on which branch should be the live one.
+===========================================
 DATE: 6/16/2026 (Session 4 — coin detail panel + screener fixes)
 -------------------------------------------
 DONE TODAY (Session 4):

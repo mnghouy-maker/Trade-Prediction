@@ -467,7 +467,12 @@
   }
 
   // ---- Boot ----
+  // Triggered by the login gate (js/auth.js) after a successful sign-in, so no
+  // market data is fetched before authentication. Guarded against a repeat call
+  // so it can never spin up duplicate refresh intervals.
   function start() {
+    if (start._booted) return;
+    start._booted = true;
     wire();
     tickStatus();                       // show "Connecting…" immediately
     setInterval(tickStatus, 1000);      // live clock — set FIRST so it always ticks
@@ -480,6 +485,6 @@
     setInterval(function () { CP.render.renderCalendar(computeEvents()); }, 60000);
   }
 
-  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start);
-  else start();
+  // Expose the boot entry point; the login gate calls this after sign-in.
+  CP.boot = start;
 })();
