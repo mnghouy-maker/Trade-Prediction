@@ -1,4 +1,18 @@
 ===========================================
+DATE: 6/18/2026 (Session 5e — decision: stay on the live hardened version)
+-------------------------------------------
+- Nimith decided NOT to host a backend (no Render, no server to maintain).
+  Keeping the LIVE site as-is: the hardened client-gate version
+  (salted + stretched hash, no plaintext, split-panel login). That already meets
+  the original goal — the password is not findable via Inspect / View source.
+- The real backend-auth code stays parked in the repo on branch
+  claude/happy-feynman-mojcxx (server/index.js, server/login.html, render.yaml,
+  the auth.js CP_SERVER_AUTH path) in case we ever want the full server-side
+  lock later. Nothing lost.
+- Live = claude/charming-fermat-9ht677 @ d28f7c3.
+- Open cosmetic item only: the crypto-wallet login photo (img/login-bg.jpg) was
+  never uploaded, so the login shows the gradient + wallet-glyph fallback.
+===========================================
 DATE: 6/18/2026 (Session 5d — REAL backend auth)
 -------------------------------------------
 DONE TODAY:
