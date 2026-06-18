@@ -27,13 +27,25 @@ DECISIONS MADE:
   The hash is obfuscation, not protection. Real auth would need the backend
   (server/index.js) hosted and authenticating server-side.
 
+DEPLOYMENT (done this session):
+- Found the cause of the earlier main-branch deploy failures: GitHub Pages here
+  only deploys the repo's DEFAULT branch, and the default is
+  claude/charming-fermat-9ht677 (not main). That's why main failed and that
+  branch succeeded.
+- Nimith said to just deploy it without him touching settings, so (with his
+  go-ahead) the login-gate commit was fast-forwarded onto the live default
+  branch claude/charming-fermat-9ht677 and pushed. Pages deploy run #9
+  succeeded. Site is live at https://mnghouy-maker.github.io/Trade-Prediction/
+- Note for next time: dev branch is claude/happy-feynman-mojcxx, but the LIVE /
+  default branch is claude/charming-fermat-9ht677. To deploy, fast-forward
+  charming-fermat to the dev commit (both are kept in sync). Long-term it would
+  be cleaner to make one branch the single default — left as Nimith's call.
+
 STILL PENDING / NEXT TIME:
-- Nimith to upload the login background to img/login-bg.jpg (use a hi-res /
-  ~4K source so it stays sharp on big screens).
-- Deployment: GitHub Pages currently builds from the OLD branch
-  claude/charming-fermat-9ht677, and pushes to main were failing. This change
-  is on claude/happy-feynman-mojcxx, so it will NOT go live until we choose/fix
-  the deploy branch. Needs Nimith's call on which branch should be the live one.
+- Upload the login background as img/login-bg.jpg (hi-res / ~4K). Until then the
+  login screen uses the dark fallback. Easiest: drop it in the img/ folder on
+  the default branch via GitHub and it auto-deploys; or tell me and I'll handle
+  it and sync both branches.
 ===========================================
 DATE: 6/16/2026 (Session 4 — coin detail panel + screener fixes)
 -------------------------------------------
