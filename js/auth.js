@@ -5,8 +5,10 @@
  * visitor's browser. Anyone who opens dev tools can read this file and bypass
  * it. It only keeps casual visitors out. For genuine protection the app would
  * need to be served behind a backend that authenticates server-side
- * (see server/index.js). The password is stored as a SHA-256 hash instead of
- * plaintext so it isn't readable at a glance — that is obfuscation, not security.
+ * (see server/index.js). The password is stored only as a salted, key-stretched
+ * hash — never in plaintext — so dev tools / "view source" reveal no usable
+ * password. That raises the bar against snooping but is still obfuscation, not
+ * real security: the gate itself can still be bypassed client-side.
  *
  * The app (js/app.js) does not boot until login succeeds, so no market data is
  * fetched before sign-in. Login is remembered for the browser session only
@@ -14,8 +16,12 @@
  */
 CP.auth = (function () {
   var USERNAME  = "admin";
-  // sha256("97979797")
-  var PASS_HASH = "92fea0fb1a59488495a0968e791d1c3d864aa362caa863d2ed681376e16a134f";
+  // Salted, key-stretched hash of the password — NOT the password itself, and
+  // NOT a plain hash a lookup site can reverse. Recovering the password would
+  // mean brute-forcing every candidate through ITER rounds of the salted hash.
+  var SALT = "cp:8e21a9f4d7";
+  var ITER = 2000;
+  var PASS_HASH = "683254a7b47ab81f9c91475610eb3f06d45ca7a506fb28d722076b5a0d7f8946";
   var SESSION_KEY = "cp_auth_v1";
 
   // --- compact synchronous SHA-256 (geraintluff, public domain) ---
@@ -79,6 +85,14 @@ CP.auth = (function () {
     return result;
   }
 
+  // Key-stretching: salt + ITER rounds of SHA-256. Slows brute-forcing of the
+  // small password keyspace and makes the stored hash useless to rainbow tables.
+  function hashPassword(pass) {
+    var h = sha256(SALT + pass);
+    for (var i = 0; i < ITER; i++) h = sha256(h);
+    return h;
+  }
+
   function isAuthed() {
     try { return sessionStorage.getItem(SESSION_KEY) === "1"; } catch (e) { return false; }
   }
@@ -105,7 +119,7 @@ CP.auth = (function () {
     var passEl = document.getElementById("loginPass");
     var user = (userEl && userEl.value || "").trim().toLowerCase();
     var pass = (passEl && passEl.value) || "";
-    if (user === USERNAME && sha256(pass) === PASS_HASH) {
+    if (user === USERNAME && hashPassword(pass) === PASS_HASH) {
       setAuthed();
       unlock();
       if (CP.boot) CP.boot();

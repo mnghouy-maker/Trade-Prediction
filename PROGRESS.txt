@@ -1,4 +1,33 @@
 ===========================================
+DATE: 6/18/2026 (Session 5c — hide password from inspect)
+-------------------------------------------
+DONE TODAY:
+- Removed a real leak: auth.js had a code comment with the password in plain
+  text (// sha256("...")). Deleted it. "View source" no longer shows it.
+- Hardened the stored credential: instead of a plain SHA-256 (trivially cracked
+  for a short numeric password via lookup sites), it's now a SALTED, KEY-STRETCHED
+  hash — salt + 2000 rounds of SHA-256 (hashPassword() in auth.js). Inspect now
+  shows only a salted hash that rainbow tables can't reverse. Login adds ~0.2-0.4s
+  (one-time) which is fine. Still synchronous so it works from file://.
+- Redacted the plaintext password from PROGRESS.txt (it is a public repo / the
+  file is also served by Pages).
+- Cache-busters bumped v10 -> v11 so the old auth.js (with the leak) can't stay
+  cached in anyone's browser.
+
+HONEST LIMITS (told Nimith):
+- This is still a SOFT gate. A determined person can bypass it client-side
+  (e.g., set the sessionStorage flag or read the page markup) regardless of how
+  the password is stored. Snooping for the password via inspect is now defeated;
+  true protection still requires backend auth (server/index.js) so the password
+  and the protected content never reach the browser.
+- The password also still exists in earlier git history. Removing that needs a
+  history rewrite, or simpler: change the password (and ideally go backend).
+
+STILL PENDING / NEXT TIME:
+- Decide if we want real backend auth (the only way to make it truly private).
+- Upload crypto-wallet photo as img/login-bg.jpg (see Session 5b).
+
+===========================================
 DATE: 6/18/2026 (Session 5b — login redesign)
 -------------------------------------------
 DONE TODAY:
@@ -17,7 +46,7 @@ DONE TODAY:
 - Responsive: panels sit side by side on desktop; on <=720px the photo becomes
   a short banner on top and the form sits below.
 - auth.js unchanged — kept the same element IDs (loginUser, loginPass, loginForm,
-  loginError, loginCard, loginScreen), so admin / 97979797 and the session
+  loginError, loginCard, loginScreen), so admin / <the chosen password> and the session
   behavior still work.
 - Cache-busters bumped v9 -> v10.
 
@@ -36,7 +65,7 @@ DATE: 6/18/2026 (Session 5 — login gate)
 -------------------------------------------
 DONE TODAY:
 - Added a sign-in screen that gates the whole dashboard. Username "admin",
-  password 97979797. The app does not boot or fetch any data until login
+  password (the code Nimith chose). The app does not boot or fetch any data until login
   succeeds (not just a visual cover).
 - New js/auth.js handles the gate. Password is stored as a SHA-256 hash (not
   plaintext); includes a self-contained SHA-256 so it also works from file://.
