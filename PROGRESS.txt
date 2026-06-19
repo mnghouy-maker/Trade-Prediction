@@ -1,4 +1,36 @@
 ===========================================
+DATE: 6/19/2026 (Session 13 — chart: use data the app already has)
+-------------------------------------------
+PROBLEM (3rd screenshot):
+- Canvas chart now renders, but showed "Couldn't load chart data" — the
+  CoinGecko /ohlc endpoint I used was blocked/rate-limited on his network even
+  though CoinGecko itself works (price + 24h vol now show from the screener).
+
+FIX:
+- The chart no longer makes a fresh /ohlc call. It now:
+  1) draws INSTANTLY from the daily closes the app already loaded for the signal
+     (CP.state.coinCache[id].chart) — no network call, guaranteed present
+     whenever the signal works, so candles always appear.
+  2) upgrades to intraday candles built from CoinGecko market_chart price points
+     (aggregateToCandles) — that's the SAME endpoint the app's technicals
+     already use successfully, so it works where /ohlc didn't.
+  3) upgrades again to CryptoCompare's exact 1m/5m/15m candles if reachable.
+- Live poll switched to CoinGecko /simple/price (cheap, reliable) to nudge the
+  forming candle + price; dropped the CryptoCompare poll (blocked here).
+- setLevels falls back to the cached candles too, so the signal lines always
+  have a chart to sit on. Cache-busters v18 -> v19.
+
+DECISIONS MADE:
+- Reuse the app's existing, already-working price history as the guaranteed
+  chart base; treat live/intraday sources as best-effort upgrades. This is the
+  most block-proof approach short of hosting our own proxy.
+
+HONEST LIMITS:
+- The cache base is DAILY candles (approximated open=prev close); intraday/finer
+  candles appear only when market_chart or CryptoCompare is reachable. Order
+  book + trades still Binance-only.
+
+===========================================
 DATE: 6/19/2026 (Session 12 — chart still blank: drop the CDN library too)
 -------------------------------------------
 PROBLEM (2nd screenshot):

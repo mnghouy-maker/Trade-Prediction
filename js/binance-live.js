@@ -150,28 +150,61 @@ CP.live = (function () {
       return d.length ? d : U.fetchJSON(ccCandleUrl("USD", limit), timeout || 6000).then(ccParse);
     });
   }
-  function fetchCG() {
-    var url = CG + "/coins/" + st.coinId + "/ohlc?vs_currency=usd&days=" + (CG_DAYS[st.interval] || 1);
-    return U.fetchJSON(url, 9000).then(function (a) {
-      return (a || []).map(function (c) { return { time: Math.floor(c[0] / 1000), open: +c[1], high: +c[2], low: +c[3], close: +c[4] }; })
-        .filter(function (c) { return c.close > 0; });
+  // Intraday candles aggregated from CoinGecko market_chart price points — this
+  // is the SAME endpoint the rest of the app already uses successfully, so it
+  // works where the /ohlc endpoint gets blocked or rate-limited.
+  var BUCKET = { "1m": 300, "5m": 300, "15m": 900, "1h": 3600, "4h": 14400, "1d": 86400 };
+  function aggregateToCandles(prices, iv) {
+    var sec = BUCKET[iv] || 900, out = [], cur = null, bucket = null;
+    (prices || []).forEach(function (p) {
+      var t = Math.floor(p[0] / 1000), v = +p[1];
+      if (!(v > 0)) return;
+      var b = Math.floor(t / sec) * sec;
+      if (b !== bucket) { if (cur) out.push(cur); bucket = b; cur = { time: b, open: v, high: v, low: v, close: v }; }
+      else { if (v > cur.high) cur.high = v; if (v < cur.low) cur.low = v; cur.close = v; }
     });
+    if (cur) out.push(cur);
+    return out;
   }
+  function fetchCGmarket() {
+    var url = CG + "/coins/" + st.coinId + "/market_chart?vs_currency=usd&days=" + (CG_DAYS[st.interval] || 1);
+    return U.fetchJSON(url, 9000).then(function (d) { return aggregateToCandles(d && d.prices, st.interval); });
+  }
+
+  // The guaranteed base: build candles from the daily closes the app already
+  // fetched for the signal (CP.state.coinCache[id].chart). No new network call,
+  // so it can't be blocked or rate-limited.
+  function drawFromCache() {
+    var e = CP.state && CP.state.coinCache && CP.state.coinCache[st.coinId];
+    var ch = e && e.chart;
+    if (!ch || !ch.closes || ch.closes.length < 2) return false;
+    var closes = ch.closes, times = ch.times || [], data = [];
+    for (var i = Math.max(1, closes.length - 180); i < closes.length; i++) {
+      var o = closes[i - 1], c = closes[i];
+      data.push({ time: times[i] ? Math.floor(times[i] / 1000) : i, open: o, high: Math.max(o, c), low: Math.min(o, c), close: c });
+    }
+    if (!data.length) return false;
+    applyCandles(data);
+    return true;
+  }
+
   function loadKlines() {
     if (!st.canvas || !st.coinId) return;
     var coinId = st.coinId, iv = st.interval;
-    st.ccLoaded = false; var got = { v: false };
-    // CoinGecko first (known-reachable) so candles show fast…
-    fetchCG().then(function (d) {
-      if (coinId === st.coinId && iv === st.interval && d.length && !st.ccLoaded) { got.v = true; applyCandles(d); }
+    st.ccLoaded = false;
+    drawFromCache(); // instant daily candles from data we already have
+    // upgrade to intraday from CoinGecko market_chart (proven reachable)…
+    fetchCGmarket().then(function (d) {
+      if (coinId === st.coinId && iv === st.interval && d.length && !st.ccLoaded) applyCandles(d);
     }).catch(function () {});
-    // …and upgrade to CryptoCompare's finer candles if it's reachable.
+    // …then to CryptoCompare's exact 1m/5m/15m candles if it's reachable.
     fetchCC(300).then(function (d) {
-      if (coinId === st.coinId && iv === st.interval && d.length) { st.ccLoaded = true; got.v = true; applyCandles(d); }
+      if (coinId === st.coinId && iv === st.interval && d.length) { st.ccLoaded = true; applyCandles(d); }
     }).catch(function () {});
     setTimeout(function () {
-      if (!got.v && coinId === st.coinId && iv === st.interval) showNote("Couldn’t load chart data on this network. The signal still works.");
-    }, 13000);
+      if (coinId === st.coinId && iv === st.interval && !st.candles.length)
+        showNote("Couldn’t load chart data on this network. The signal still works.");
+    }, 12000);
   }
   function applyCandles(d) {
     st.candles = d;
@@ -205,6 +238,8 @@ CP.live = (function () {
 
   // ---------- signal levels ----------
   function setLevels(plan) {
+    // If the chart has no candles yet but the app has price history loaded, use it.
+    if (!st.candles.length) drawFromCache();
     st.levels = [];
     if (plan && plan.entry) {
       st.levels.push({ price: plan.entry, color: "#e8edf2", title: plan.side === "long" ? "LONG entry" : "SHORT entry" });
@@ -235,26 +270,18 @@ CP.live = (function () {
   function stopPoll() { if (st.poll) { clearInterval(st.poll); st.poll = null; } }
   function pollLive() {
     if (!st.active || !st.coinId) return;
-    fetchCC(3, 5000).then(function (d) {
-      if (!d.length || !st.candles.length) return;
-      mergeCandles(d); draw();
-      if (Date.now() - st.lastTickerTs > 9000) updatePrice(d[d.length - 1].close);
-    }).catch(function () {
-      // CryptoCompare unreachable — keep the price moving via CoinGecko.
-      if (Date.now() - st.lastTickerTs > 9000) {
-        U.fetchJSON(CG + "/simple/price?ids=" + st.coinId + "&vs_currencies=usd", 6000).then(function (r) {
-          var p = r && r[st.coinId] && r[st.coinId].usd;
-          if (p > 0) { updatePrice(p); if (st.candles.length) { st.candles[st.candles.length - 1].close = p; draw(); } }
-        }).catch(function () {});
+    if (Date.now() - st.lastTickerTs < 9000) return; // Binance ticker is driving the price
+    // Cheap, reliable: one CoinGecko price call; nudge the forming candle.
+    U.fetchJSON(CG + "/simple/price?ids=" + st.coinId + "&vs_currencies=usd", 6000).then(function (r) {
+      var p = r && r[st.coinId] && r[st.coinId].usd;
+      if (!(p > 0)) return;
+      updatePrice(p);
+      if (st.candles.length) {
+        var last = st.candles[st.candles.length - 1];
+        last.close = p; if (p > last.high) last.high = p; if (p < last.low) last.low = p;
+        draw();
       }
-    });
-  }
-  function mergeCandles(recent) {
-    recent.forEach(function (c) {
-      var last = st.candles[st.candles.length - 1];
-      if (last && c.time === last.time) st.candles[st.candles.length - 1] = c;
-      else if (!last || c.time > last.time) { st.candles.push(c); if (st.candles.length > 400) st.candles.shift(); }
-    });
+    }).catch(function () {});
   }
 
   // ---------- Binance WebSocket: order book + trades (+ fast ticker) ----------
