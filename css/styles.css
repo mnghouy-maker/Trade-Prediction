@@ -1012,3 +1012,111 @@ body.locked { overflow: hidden; }
   .login-screen { padding: 14px; }
   .login-main { padding: 26px 20px 30px; }
 }
+
+/* ============================================================
+   BINANCE-STYLE TRADE TAB (live chart / book / trades / paper)
+   ============================================================ */
+.bx-topbar {
+  display: flex; align-items: center; gap: 22px; flex-wrap: wrap;
+  position: relative; padding: 14px 18px;
+}
+.bx-sym { display: flex; align-items: center; gap: 11px; }
+.bx-coin-icon { width: 26px; height: 26px; display: inline-flex; }
+.bx-sym-name { font-size: 17px; font-weight: 800; letter-spacing: 0.3px; }
+.bx-perp {
+  font-size: 10px; font-weight: 700; color: var(--bull); background: var(--bull-glow);
+  border: 1px solid rgba(22,199,132,0.25); border-radius: 5px; padding: 1px 6px; vertical-align: middle;
+}
+.bx-sym-full { font-size: 12px; color: var(--text-dim); }
+.bx-price-block { display: flex; flex-direction: column; }
+.bx-price { font-size: 24px; font-weight: 800; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.bx-price.up { color: var(--bull); }
+.bx-price.down { color: var(--bear); }
+.bx-change { font-size: 12px; font-weight: 600; }
+.bx-stats { display: flex; gap: 22px; flex-wrap: wrap; }
+.bx-stat { display: flex; flex-direction: column; gap: 2px; }
+.bx-stat span { font-size: 10.5px; color: var(--text-faint); text-transform: uppercase; letter-spacing: 0.4px; }
+.bx-stat b { font-size: 13px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.bx-search { margin-left: auto; position: relative; min-width: 180px; }
+.bx-search input {
+  width: 100%; background: var(--bg-elev2); border: 1px solid var(--border);
+  color: var(--text); border-radius: 9px; padding: 9px 12px; font-family: inherit; font-size: 13px;
+}
+.bx-search input:focus { outline: none; border-color: var(--accent); }
+.coin-suggest-list {
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 30;
+  background: var(--bg-elev2); border: 1px solid var(--border); border-radius: 10px;
+  overflow: hidden; box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+}
+.coin-suggest-list:empty { display: none; }
+.coin-suggest-item { display: flex; align-items: center; gap: 4px; padding: 9px 12px; cursor: pointer; font-size: 13px; }
+.coin-suggest-item:hover { background: rgba(255,255,255,0.05); }
+.coin-suggest-item span { color: var(--text-dim); }
+.coin-suggest-none { padding: 10px 12px; color: var(--text-faint); font-size: 12px; }
+
+/* main grid: chart + side column */
+.bx-main { display: grid; grid-template-columns: 1fr 330px; gap: 14px; margin-bottom: 14px; }
+.bx-chart-card { padding: 0; position: relative; overflow: hidden; min-height: 480px; }
+.bx-chart { width: 100%; height: 480px; }
+.bx-chart-note {
+  position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+  text-align: center; padding: 30px; color: var(--text-dim); font-size: 13px; line-height: 1.5;
+  background: var(--bg-elev2);
+}
+
+/* order book + trades */
+.bx-side { display: flex; flex-direction: column; gap: 8px; }
+.bx-side-head { font-size: 12px; font-weight: 700; color: var(--text-dim); text-transform: uppercase; letter-spacing: 0.4px; }
+.bx-book, .bx-trades { font-size: 12px; font-variant-numeric: tabular-nums; }
+.bx-book-head, .bx-trades-head {
+  display: flex; justify-content: space-between; color: var(--text-faint);
+  font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.3px; padding: 0 2px 4px;
+}
+.bx-trades-head span:nth-child(2) { flex: 1; text-align: center; }
+.bx-trades-head span:last-child { text-align: right; }
+.bx-row {
+  position: relative; display: flex; justify-content: space-between; align-items: center;
+  padding: 2px 6px; line-height: 1.7; overflow: hidden;
+}
+.bx-depth { position: absolute; top: 0; bottom: 0; right: 0; z-index: 0; }
+.bx-row.ask .bx-depth { background: rgba(240,53,66,0.13); }
+.bx-row.bid .bx-depth { background: rgba(22,199,132,0.13); }
+.bx-rp, .bx-rq { position: relative; z-index: 1; }
+.bx-row.ask .bx-rp { color: var(--bear); }
+.bx-row.bid .bx-rp { color: var(--bull); }
+.bx-rq { color: var(--text-dim); }
+.bx-book-mid {
+  display: flex; justify-content: space-between; align-items: baseline;
+  padding: 6px; margin: 4px 0; border-top: 1px solid var(--border); border-bottom: 1px solid var(--border);
+}
+.bx-book-last { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
+.bx-book-spread { font-size: 11px; color: var(--text-faint); }
+.bx-trade { display: flex; justify-content: space-between; padding: 1px 6px; line-height: 1.75; }
+.bx-trade span:nth-child(2) { flex: 1; text-align: center; color: var(--text-dim); }
+.bx-trade span:last-child { color: var(--text-faint); text-align: right; }
+
+/* paper order entry */
+.bx-trade-row { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; margin-bottom: 14px; }
+.bx-balance { display: flex; gap: 18px; flex-wrap: wrap; align-items: baseline; margin-bottom: 12px; font-size: 13px; }
+.bx-balance b { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; margin-left: 4px; }
+.bx-order-form { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 12px; }
+.bx-order-form label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--text-dim); }
+.bx-order-form input {
+  background: var(--bg-elev2); border: 1px solid var(--border); color: var(--text);
+  border-radius: 8px; padding: 8px 10px; font-family: inherit; font-size: 13px; font-variant-numeric: tabular-nums;
+}
+.bx-order-form input:focus { outline: none; border-color: var(--accent); }
+.bx-order-btns { display: flex; gap: 10px; }
+.bx-buy, .bx-sell { flex: 1; border: none; color: #fff; font-weight: 800; font-size: 14px; padding: 12px; border-radius: 9px; cursor: pointer; font-family: inherit; }
+.bx-buy { background: var(--bull); }
+.bx-sell { background: var(--bear); }
+.bx-buy:hover { filter: brightness(1.08); }
+.bx-sell:hover { filter: brightness(1.08); }
+.bx-positions { overflow-x: auto; }
+.bx-pos-scroll { overflow-x: auto; }
+
+@media (max-width: 900px) {
+  .bx-main { grid-template-columns: 1fr; }
+  .bx-trade-row { grid-template-columns: 1fr; }
+  .bx-search { margin-left: 0; width: 100%; }
+}

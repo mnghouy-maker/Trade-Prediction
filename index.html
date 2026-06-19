@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="preconnect" href="https://api.coingecko.com" />
   <link rel="preconnect" href="https://api.alternative.me" />
-  <link rel="stylesheet" href="css/styles.css?v=12" />
+  <link rel="stylesheet" href="css/styles.css?v=13" />
 </head>
 <body>
 
@@ -25,7 +25,7 @@
 
       <!-- Left: photo / brand panel -->
       <div class="login-aside">
-        <img class="login-aside-img" src="img/login-bg.jpg?v=12" alt="" onerror="this.remove()" />
+        <img class="login-aside-img" src="img/login-bg.jpg?v=13" alt="" onerror="this.remove()" />
         <svg class="login-aside-glyph" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <!-- Lucide: wallet -->
@@ -349,21 +349,69 @@
   <!-- ===================== TAB: TRADE ===================== -->
   <div class="tab-panel" id="tab-trade">
 
-    <!-- Coin lookup — populated when user clicks a screener row or searches here -->
-    <div class="card coin-detail-card">
-      <div class="card-head">
-        <h2>Coin Detail</h2>
-        <div class="coin-detail-search">
-          <input id="tradeCoinSearch" type="text" placeholder="Search coin from screener…" autocomplete="off" />
+    <!-- Binance-style symbol header (live from Binance ticker stream) -->
+    <div class="bx-topbar card">
+      <div class="bx-sym">
+        <div id="bxCoinIcon" class="bx-coin-icon"></div>
+        <div>
+          <div class="bx-sym-name"><span id="bxSymbol">BTCUSDT</span> <span class="bx-perp">Live</span></div>
+          <div id="bxCoinFull" class="bx-sym-full">Bitcoin</div>
         </div>
       </div>
-      <div id="coinDetailBody" class="coin-detail-body">
-        <div class="skeleton">Click any coin in the Markets tab to see its details here.</div>
+      <div class="bx-price-block">
+        <div id="bxPrice" class="bx-price">--</div>
+        <div id="bxChange" class="bx-change">--</div>
       </div>
-      <div id="tradeCoinSuggest" class="coin-suggest-list"></div>
+      <div class="bx-stats">
+        <div class="bx-stat"><span>24h High</span><b id="bxHigh">--</b></div>
+        <div class="bx-stat"><span>24h Low</span><b id="bxLow">--</b></div>
+        <div class="bx-stat"><span>24h Vol</span><b id="bxVolBase">--</b></div>
+        <div class="bx-stat"><span>24h Vol (USDT)</span><b id="bxVolQuote">--</b></div>
+      </div>
+      <div class="bx-search">
+        <input id="tradeCoinSearch" type="text" placeholder="Search coin…" autocomplete="off" />
+        <div id="tradeCoinSuggest" class="coin-suggest-list"></div>
+      </div>
     </div>
 
-    <div class="grid-2">
+    <!-- Chart + order book + recent trades -->
+    <div class="bx-main">
+      <div class="card bx-chart-card">
+        <div id="bxChart" class="bx-chart"></div>
+        <div id="bxChartNote" class="bx-chart-note hidden"></div>
+      </div>
+      <div class="card bx-side">
+        <div class="bx-side-head">Order Book</div>
+        <div id="bxBook" class="bx-book"><div class="skeleton">Open the Trade tab to connect…</div></div>
+        <div class="bx-side-head">Recent Trades</div>
+        <div id="bxTrades" class="bx-trades"><div class="skeleton">—</div></div>
+      </div>
+    </div>
+
+    <!-- Paper buy/sell + the macro/news Long-Short signal -->
+    <div class="bx-trade-row">
+
+      <div class="card bx-order-card">
+        <div class="card-head">
+          <h2>Buy / Sell <span class="card-sub">Paper trading — no real money</span></h2>
+          <button id="paperReset" class="btn btn-sm">Reset</button>
+        </div>
+        <div class="bx-balance">
+          <span>Balance <b id="paperBalance">$10,000.00</b></span>
+          <span>Equity <b id="paperEquity">$10,000.00</b></span>
+          <span id="paperRealized" class="card-sub">Realized +$0.00</span>
+        </div>
+        <div class="bx-order-form">
+          <label>Order price (USD)<input id="paperPrice" type="number" step="any" placeholder="live" /></label>
+          <label>Amount (coin)<input id="paperAmt" type="number" step="any" placeholder="0.00" /></label>
+          <label>Or size (USD)<input id="paperUsd" type="number" step="any" placeholder="0.00" /></label>
+          <label>Leverage (x)<input id="paperLev" type="number" step="1" min="1" max="125" value="10" /></label>
+        </div>
+        <div class="bx-order-btns">
+          <button id="paperBuy" class="btn bx-buy">Buy / Long</button>
+          <button id="paperSell" class="btn bx-sell">Sell / Short</button>
+        </div>
+      </div>
 
       <div class="card">
         <div class="card-head">
@@ -378,34 +426,45 @@
         <div id="tradeBody" class="trade-body"><div class="skeleton">Building trade plan…</div></div>
       </div>
 
-      <div class="card">
-        <div class="card-head">
-          <h2>Profit Calculator</h2>
-          <span class="card-sub">Futures PnL · ROE · liquidation</span>
-        </div>
-        <div class="calc">
-          <div class="calc-side-toggle">
-            <button class="calc-side active" data-side="long">Long</button>
-            <button class="calc-side" data-side="short">Short</button>
-          </div>
-          <div class="calc-grid">
-            <label>Entry price (USD)<input id="calcEntry" type="number" step="any" placeholder="0.00" /></label>
-            <label>Exit price (USD)<input id="calcExit" type="number" step="any" placeholder="0.00" /></label>
-            <label>Quantity (coins)<input id="calcQty" type="number" step="any" placeholder="0.00" /></label>
-            <label>Leverage (x)<input id="calcLev" type="number" step="1" min="1" max="125" value="10" /></label>
-            <label>Fee per side (%)<input id="calcFee" type="number" step="any" value="0.05" /></label>
-            <label>Position size (USD)<input id="calcNotional" type="number" step="any" placeholder="auto" /></label>
-          </div>
-          <div class="calc-presets">
-            <button class="btn btn-sm" id="calcUseLive">Entry = live price</button>
-            <button class="btn btn-sm" id="calcUseTP">Exit = TP1</button>
-            <button class="btn btn-sm" id="calcUseStop">Exit = Stop</button>
-          </div>
-          <div id="calcResults" class="calc-results"><div class="skeleton">Enter values to calculate.</div></div>
-        </div>
-      </div>
-
     </div>
+
+    <!-- Open paper positions -->
+    <div class="card bx-positions-card">
+      <div class="card-head">
+        <h2>Positions</h2>
+        <span class="card-sub">Paper · live PnL against the Binance price</span>
+      </div>
+      <div id="paperPositions" class="bx-positions"><div class="skeleton">No open positions.</div></div>
+    </div>
+
+    <!-- Profit calculator -->
+    <div class="card">
+      <div class="card-head">
+        <h2>Profit Calculator</h2>
+        <span class="card-sub">Futures PnL · ROE · liquidation</span>
+      </div>
+      <div class="calc">
+        <div class="calc-side-toggle">
+          <button class="calc-side active" data-side="long">Long</button>
+          <button class="calc-side" data-side="short">Short</button>
+        </div>
+        <div class="calc-grid">
+          <label>Entry price (USD)<input id="calcEntry" type="number" step="any" placeholder="0.00" /></label>
+          <label>Exit price (USD)<input id="calcExit" type="number" step="any" placeholder="0.00" /></label>
+          <label>Quantity (coins)<input id="calcQty" type="number" step="any" placeholder="0.00" /></label>
+          <label>Leverage (x)<input id="calcLev" type="number" step="1" min="1" max="125" value="10" /></label>
+          <label>Fee per side (%)<input id="calcFee" type="number" step="any" value="0.05" /></label>
+          <label>Position size (USD)<input id="calcNotional" type="number" step="any" placeholder="auto" /></label>
+        </div>
+        <div class="calc-presets">
+          <button class="btn btn-sm" id="calcUseLive">Entry = live price</button>
+          <button class="btn btn-sm" id="calcUseTP">Exit = TP1</button>
+          <button class="btn btn-sm" id="calcUseStop">Exit = Stop</button>
+        </div>
+        <div id="calcResults" class="calc-results"><div class="skeleton">Enter values to calculate.</div></div>
+      </div>
+    </div>
+
   </div>
 
   <!-- ===================== TAB: NEWS ===================== -->
@@ -515,20 +574,22 @@
 
   <div id="toasts" class="toasts"></div>
 
-  <script src="js/config.js?v=12"></script>
-  <script src="js/util.js?v=12"></script>
-  <script src="js/indicators.js?v=12"></script>
-  <script src="js/api.js?v=12"></script>
-  <script src="js/sentiment.js?v=12"></script>
-  <script src="js/score.js?v=12"></script>
-  <script src="js/macro.js?v=12"></script>
-  <script src="js/alerts.js?v=12"></script>
-  <script src="js/history.js?v=12"></script>
-  <script src="js/backtest.js?v=12"></script>
-  <script src="js/markets.js?v=12"></script>
-  <script src="js/trade.js?v=12"></script>
-  <script src="js/render.js?v=12"></script>
-  <script src="js/app.js?v=12"></script>
-  <script src="js/auth.js?v=12"></script>
+  <script src="js/config.js?v=13"></script>
+  <script src="js/util.js?v=13"></script>
+  <script src="js/indicators.js?v=13"></script>
+  <script src="js/api.js?v=13"></script>
+  <script src="js/sentiment.js?v=13"></script>
+  <script src="js/score.js?v=13"></script>
+  <script src="js/macro.js?v=13"></script>
+  <script src="js/alerts.js?v=13"></script>
+  <script src="js/history.js?v=13"></script>
+  <script src="js/backtest.js?v=13"></script>
+  <script src="js/markets.js?v=13"></script>
+  <script src="js/trade.js?v=13"></script>
+  <script src="js/render.js?v=13"></script>
+  <script src="js/paper.js?v=13"></script>
+  <script src="js/binance-live.js?v=13"></script>
+  <script src="js/app.js?v=13"></script>
+  <script src="js/auth.js?v=13"></script>
 </body>
 </html>

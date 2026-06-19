@@ -184,6 +184,9 @@
     CP.state.currentCoin = id;
     var meta = metaFor(id);
 
+    // Point the live Binance view (chart / order book / trades / paper) at this coin.
+    if (CP.live) CP.live.setSymbol(id, meta);
+
     // Update the BTC/ETH switcher buttons — if the coin is one of them mark it active,
     // otherwise clear both so neither appears selected (altcoin mode).
     document.querySelectorAll(".coin-btn").forEach(function (b) {
@@ -249,6 +252,17 @@
     var pos = posEl ? parseFloat(posEl.value) : 1000;
     if (isNaN(pos) || pos < 0) pos = 0;
     CP.render.renderTrade(plan, meta.symbol, plan.entry, pos);
+  }
+
+  // ---- Paper trading (Buy/Sell panel) ----
+  function placePaper(side) {
+    var price = parseFloat(U.el("paperPrice").value) || 0;
+    var amt = parseFloat(U.el("paperAmt").value) || 0;
+    var usd = parseFloat(U.el("paperUsd").value) || 0;
+    var lev = parseInt(U.el("paperLev").value, 10) || 1;
+    if (amt <= 0 && usd > 0 && price > 0) amt = usd / price;
+    CP.paper.order(side, amt, price, lev);
+    U.el("paperAmt").value = ""; U.el("paperUsd").value = "";
   }
 
   // ---- Profit calculator ----
@@ -360,6 +374,8 @@
     document.querySelectorAll(".tab-panel").forEach(function (p) {
       p.classList.toggle("active", p.id === "tab-" + name);
     });
+    // Only run the live Binance streams while the Trade tab is open.
+    if (CP.live) { if (name === "trade") CP.live.activate(); else CP.live.deactivate(); }
   }
 
   function wireTabNav() {
@@ -441,6 +457,16 @@
     var posEl = U.el("tradePosSize");
     if (posEl) posEl.addEventListener("input", renderTradeFromState);
 
+    // Paper trading: buy / sell / reset / close-position
+    var pBuy = U.el("paperBuy"), pSell = U.el("paperSell"), pReset = U.el("paperReset"), pPos = U.el("paperPositions");
+    if (pBuy) pBuy.addEventListener("click", function () { placePaper("long"); });
+    if (pSell) pSell.addEventListener("click", function () { placePaper("short"); });
+    if (pReset) pReset.addEventListener("click", function () { CP.paper.reset(); });
+    if (pPos) pPos.addEventListener("click", function (e) {
+      var b = e.target.closest(".paper-close");
+      if (b) CP.paper.closeSymbol(b.getAttribute("data-sym"));
+    });
+
     // Calculator: live recompute + side toggle + presets
     ["calcEntry", "calcExit", "calcQty", "calcLev", "calcFee", "calcNotional"].forEach(function (id) {
       U.el(id).addEventListener("input", calcUpdate);
@@ -494,6 +520,7 @@
     if (start._booted) return;
     start._booted = true;
     wire();
+    if (CP.paper) CP.paper.init();       // restore any saved paper account
     tickStatus();                       // show "Connecting…" immediately
     setInterval(tickStatus, 1000);      // live clock — set FIRST so it always ticks
     setInterval(priceTick, 1000);       // live Binance prices every second

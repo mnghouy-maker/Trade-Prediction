@@ -1,4 +1,54 @@
 ===========================================
+DATE: 6/19/2026 (Session 7 — Binance-style Trade tab, phase 2)
+-------------------------------------------
+DONE TODAY:
+- Rebuilt the Trade tab into a Binance Futures-style layout:
+  * Symbol header strip — live price, 24h change, 24h high/low and 24h volume
+    (base + USDT), updating from Binance's ticker stream.
+  * TradingView candlestick chart (official embed) for BINANCE:<symbol>, dark
+    theme; recreated when you switch coins.
+  * Live ORDER BOOK (top ~14 bids/asks with depth bars) and RECENT TRADES feed,
+    both streaming from Binance's public WebSocket — no API key, same feed the
+    Binance site uses. Spot market data (matches the rest of the app).
+  * Paper BUY/SELL panel + open POSITIONS table (kept the macro/news Trade
+    Signal and the Profit Calculator below).
+- New js/binance-live.js (CP.live): one combined WebSocket
+  (<sym>@depth20@100ms / @aggTrade / @ticker), throttled rendering, auto
+  reconnect (up to 5 tries) and a graceful "not on Binance / feed blocked"
+  notice. Loads tv.js for the chart. Sockets only run while the Trade tab is
+  open (opened on tab enter, closed on leave) to avoid background connections.
+- New js/paper.js (CP.paper): futures-style paper trading — $10,000 fake
+  balance, long/short with leverage, one position per symbol that an opposite
+  order reduces/closes/flips, live unrealized PnL + ROE + liquidation price
+  against the Binance mark, 0.05% fees, Reset button. Persists to localStorage
+  (cp_paper_v1). Smoke-tested the open/mark/close/flip math in Node — correct.
+- Wiring: app.selectCoin points CP.live at the coin; switchTab starts/stops the
+  streams; paper Buy/Sell/Reset/Close buttons wired; CP.paper.init() on boot.
+- index.html Trade tab markup rebuilt (kept all IDs app.js depends on:
+  tradeCoinSearch/Suggest, tradeCoinLabel, tradePosSize, tradeBody, calc*).
+  Removed the old Coin Detail card (renderCoinDetail safely no-ops without it).
+  All cache-busters bumped v12 -> v13; new BINANCE-STYLE TRADE TAB CSS section.
+
+DECISIONS MADE:
+- Spot market data + futures-STYLE paper trading (per earlier agreement) — gives
+  the Futures feel without needing the futures API or real mark/funding.
+- Coins without a Binance USDT pair show a clear notice; the Trade Signal still
+  works for them (it runs off CoinGecko data).
+
+HONEST LIMITS (couldn't fully verify here):
+- The TradingView embed + the Binance WebSocket can't be exercised in this
+  sandbox (no browser, outbound WSS likely blocked). Syntax + the paper/signal
+  math are tested; the live chart/book/trades need a quick look in a real
+  browser. If Binance is geo-blocked on a viewer's network the feed shows a
+  notice and the chart/signal still work.
+
+STILL PENDING / NEXT TIME:
+- PHASE 3: backend macro engine — "higher/lower than expected" via calendar
+  forecast feeds, more sources (CryptoPanic/RSS/BLS/BEA/FRED/Treasury) + optional
+  LLM reasons. Needs hosting + a few free API keys.
+- Confirm phase 2 with Nimith (browser check), then deploy when he's ready.
+
+===========================================
 DATE: 6/19/2026 (Session 6 — macro/news Long/Short signal, phase 1)
 -------------------------------------------
 DONE TODAY:
