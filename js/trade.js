@@ -104,6 +104,8 @@ CP.trade = (function () {
       rsi: rsi, confidence: confidence, reasons: reasons,
       macroBias: biasLabel, macroConfidence: macroConf, techDir: techDir, macroDir: macroDir,
       cautions: (macro && macro.cautions) || [],
+      macroSummary: (macro && macro.llmSummary) || null,
+      backed: !!(macro && macro.backed),
       notes: reasons.map(function (r) { return r.text; }),
     };
   }

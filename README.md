@@ -24,7 +24,10 @@ Coin screener for the top 100–250 coins. Each row shows live price, 1h/24h/7d 
 - **Backtesting** — replay the model over 1–3 years of history to see direction accuracy, win rate and profit factor.
 
 ### Trade
-- **Trade Signal** — BUY / SELL / WAIT with entry price, stop loss, three take-profit targets, and risk:reward ratio for the selected coin.
+A Binance Futures-style view of the selected coin:
+- **Live market** — a TradingView candlestick chart plus a real-time order book and recent-trades tape, streamed from Binance's public WebSocket (no API key). A header strip shows live price, 24h change, high/low and volume.
+- **Trade Signal** — a clear **LONG or SHORT** call with entry, stop loss and three take-profit targets shown as price, % move and **$ profit/loss** for a position size you set. The direction is driven by global macro/news (inflation, Fed/rates, jobs, ETF/adoption, regulation, liquidity, geopolitics, banking, China/ECB/BoJ) with the technical trend confirming, and each reason **links to the source headline**. With the backend running it adds "higher/lower than expected" surprises, a real Fed (FRED) trend and an optional LLM summary.
+- **Paper trading** — practice buy/sell with a fake balance and leverage; positions track live PnL, ROE and liquidation against the Binance price. No real money, no keys; saved in your browser.
 - **Profit Calculator** — Binance-style futures PnL, ROE and liquidation price. Long or short, leverage, fees, by quantity or by position size. One-click fill from the live price, TP or stop.
 
 ### News
@@ -89,9 +92,31 @@ All keys are optional. Set them in `.env` to upgrade specific data sources:
 |-----|----------|------------|
 | `CRYPTOPANIC_TOKEN` | Real news feed from CryptoPanic | Free CryptoCompare feed |
 | `WHALE_ALERT_KEY` | Live on-chain whale transfers | Sample data |
-| `ANTHROPIC_API_KEY` | Claude LLM headline sentiment | Built-in keyword classifier |
+| `ANTHROPIC_API_KEY` | Claude LLM headline sentiment + macro read | Built-in keyword classifier |
+| `FRED_API_KEY` (free) | Real Fed macro trend (CPI / rates / unemployment) in the Trade Signal | Economic calendar only |
 
 Keys stay server-side, never sent to the browser.
+
+### The macro engine (`/api/macro`)
+
+The Long/Short Trade Signal works browser-only off news direction. Running the
+backend upgrades it with the **"higher/lower than expected"** logic that the
+cheat-sheet is built on:
+
+- **Economic calendar** with **forecast + actual** (free, no key) — so a CPI or
+  NFP print is scored as a surprise (e.g. *CPI 0.2% vs 0.4% expected → Long*).
+- **FRED** macro trend (free key) — real CPI YoY / Fed funds / unemployment
+  direction as supporting drivers.
+- **LLM macro summary** (optional, `ANTHROPIC_API_KEY`) — a short plain-English
+  read of the current backdrop.
+
+The frontend prefers `/api/macro` when it's reachable and silently falls back to
+the browser-only signal on GitHub Pages / `file://`.
+
+**To make it live:** host `server/index.js` on any Node platform (Render,
+Railway, Fly.io, …), set `FRED_API_KEY` (and optionally `CRYPTOPANIC_TOKEN` /
+`ANTHROPIC_API_KEY`), then point the frontend at it by setting
+`CP.config.backend.base` in `js/config.js` to the backend URL.
 
 ---
 

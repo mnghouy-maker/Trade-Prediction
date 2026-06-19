@@ -181,6 +181,17 @@ CP.api = (function () {
     ];
   }
 
+  // ---- Macro extras (backend only): economic calendar w/ forecast+actual,
+  //      FRED trend, optional LLM macro read. Null when there's no backend
+  //      (GitHub Pages / file://) — the app then uses the browser-only macro. ----
+  function getMacro() {
+    return tryBackend("/api/macro", 12000).then(function (d) {
+      if (!d) return null;
+      var has = (d.calendar && d.calendar.length) || d.fred || d.llm;
+      return has ? d : null;
+    }).catch(function () { return null; });
+  }
+
   // ---- Whale transfers (backend Whale Alert if keyed, else sample) ----
   function getWhales(btcPrice) {
     return tryBackend("/api/whales").then(function (d) {
@@ -218,7 +229,7 @@ CP.api = (function () {
 
   return {
     getSimple: getSimple, getGlobal: getGlobal, getFearGreed: getFearGreed,
-    getMarketChart: getMarketChart, getNews: getNews, getWhales: getWhales,
+    getMarketChart: getMarketChart, getNews: getNews, getWhales: getWhales, getMacro: getMacro,
     getBinancePrices: getBinancePrices, getBinance24hAll: getBinance24hAll, binanceSymbol: binanceSymbol,
   };
 })();

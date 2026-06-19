@@ -439,12 +439,18 @@ CP.render = (function () {
       : "";
 
     var sub = "Confidence " + plan.confidence + "% · macro read: " + plan.macroBias +
-      (plan.macroConfidence ? " (" + plan.macroConfidence + "%)" : "");
+      (plan.macroConfidence ? " (" + plan.macroConfidence + "%)" : "") +
+      (plan.backed ? " · live macro feed" : "");
+
+    var summaryHtml = plan.macroSummary
+      ? '<div class="trade-summary">' + U.escapeHtml(plan.macroSummary) + "</div>"
+      : "";
 
     U.el("tradeBody").innerHTML =
       '<div class="trade-action" style="background:' + color + '22;border-color:' + color + '">' +
         '<span class="trade-verb" style="color:' + color + '">' + verb + "</span>" +
         '<span class="trade-conf">' + sub + "</span></div>" +
+      summaryHtml +
       levels +
       '<div class="trade-why"><div class="why-head">Why ' + verb + "</div>" + why + "</div>" +
       cautionHtml +

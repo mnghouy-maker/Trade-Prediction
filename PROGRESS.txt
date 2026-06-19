@@ -1,4 +1,56 @@
 ===========================================
+DATE: 6/19/2026 (Session 8 — backend macro engine, phase 3)
+-------------------------------------------
+DONE TODAY:
+- Added the backend macro engine so the Long/Short signal can use the
+  "higher/lower than expected" logic the cheat-sheet is built on.
+- server/index.js: new /api/macro endpoint returning
+  * an economic calendar with FORECAST + ACTUAL (free ForexFactory-derived feed
+    nfs.faireconomy.media, no key) — each US high/medium event scored as a
+    surprise per the cheat-sheet (CPI/PCE/jobs/claims/rate decision).
+  * optional real Fed macro TREND from FRED (free key): CPI YoY, Fed funds rate,
+    unemployment, each as rising/falling.
+  * optional short LLM macro read (reuses ANTHROPIC_API_KEY) -> {bias, summary}.
+  All defensive (try/catch -> empty), key stays server-side.
+- Frontend: js/api.js getMacro() prefers the backend, returns null on the static
+  site. js/macro.js evaluate() now takes that payload and folds in: data
+  surprises (weight 3.5), FRED trend drivers, upcoming events w/ forecasts as
+  cautions, and the LLM summary. js/trade.js carries macroSummary + backed into
+  the plan; js/render.js shows the summary line + a "live macro feed" tag.
+- Graceful fallback: with no backend (GitHub Pages / file://) everything works
+  exactly as phase 1 (browser-only headline-direction). Verified backward-compat
+  + the backend-fed path in Node (CPI/NFP surprises -> strong LONG, summary
+  threads through).
+- Docs: .env.example gets FRED_API_KEY; README documents /api/macro + a hosting
+  note (set CP.config.backend.base to the deployed URL). Cache-busters v13 -> v14.
+
+DECISIONS MADE:
+- Calendar source: free faireconomy JSON (US, high/medium). Honest limit: it
+  reliably gives upcoming FORECASTS and exposes ACTUALs as they print; the most
+  complete "actual vs forecast" history would want a paid calendar key — left as
+  a future upgrade.
+- Backend is OFF by default (config.backend.base ""). It only kicks in once
+  server/index.js is hosted and config points at it.
+
+HONEST LIMITS (couldn't fully verify here):
+- No browser + outbound calls likely blocked in this sandbox, so the live
+  /api/macro fetches (faireconomy / FRED / Anthropic) weren't exercised end to
+  end. Syntax + the fold-in logic are tested; needs a real deploy to confirm the
+  external feeds.
+
+HOSTING CHECKLIST FOR NIMITH (to make phase 3 live):
+1. Deploy server/index.js to Render / Railway / Fly.io (Node 18+, `npm start`).
+2. Set FRED_API_KEY (free: fred.stlouisfed.org/docs/api/api_key.html). Optional:
+   CRYPTOPANIC_TOKEN, ANTHROPIC_API_KEY.
+3. Point the frontend at it: set CP.config.backend.base in js/config.js to the
+   backend URL, bump cache-busters, redeploy the static site.
+   (Or host the static site FROM that same Node server, then base "" works.)
+
+STILL PENDING / NEXT TIME:
+- Nimith to review phases 1-3 in a browser and decide on hosting for phase 3.
+- Deploy to the live branch when he gives the go.
+
+===========================================
 DATE: 6/19/2026 (Session 7 — Binance-style Trade tab, phase 2)
 -------------------------------------------
 DONE TODAY:

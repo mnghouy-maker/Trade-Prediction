@@ -115,7 +115,9 @@ CP.macro = (function () {
   // sentiment: output of CP.sentiment.analyze (has .items enriched, .fearLevel)
   // fearGreed: { value, label, prev }
   // events:   computed economic-calendar events ({ name, impact, countdown, sortT })
-  function evaluate(sentiment, fearGreed, events) {
+  // extra:    optional backend payload from /api/macro
+  //           ({ calendar:[{name,impact,dateMs,forecast,actual,dir}], fred, llm })
+  function evaluate(sentiment, fearGreed, events, extra) {
     var drivers = [];
     var items = (sentiment && sentiment.items) || [];
     items.forEach(function (n) {
@@ -144,6 +146,40 @@ CP.macro = (function () {
         url: null, source: "News scan" });
     }
 
+    // ---- Backend extras (only present when /api/macro is reachable) ----
+    var llmSummary = null;
+    if (extra) {
+      // Economic-calendar surprises (actual vs forecast) — the strongest,
+      // most objective drivers right after a release prints.
+      (extra.calendar || []).forEach(function (c) {
+        if (c.actual && c.dir) {
+          drivers.push({ category: "Data surprise", dir: c.dir, weight: 3.5,
+            title: c.name + ": " + c.actual + " vs " + (c.forecast || "?") + " expected",
+            url: null, source: "Economic calendar", surprise: true });
+        }
+      });
+      // Real macro trend from the Fed (FRED).
+      if (extra.fred) {
+        var f = extra.fred;
+        if (f.cpiYoY) {
+          var dc = f.cpiYoY.trend === "falling" ? 1 : f.cpiYoY.trend === "rising" ? -1 : 0;
+          if (dc) drivers.push({ category: "Inflation trend", dir: dc, weight: 2,
+            title: "CPI " + f.cpiYoY.latest + "% YoY and " + f.cpiYoY.trend, url: null, source: "FRED" });
+        }
+        if (f.rate) {
+          var dr = f.rate.trend === "falling" ? 1 : f.rate.trend === "rising" ? -1 : 0;
+          if (dr) drivers.push({ category: "Fed funds rate", dir: dr, weight: 2,
+            title: "Fed funds " + f.rate.latest + "% and " + f.rate.trend, url: null, source: "FRED" });
+        }
+        if (f.unemployment) {
+          var du = f.unemployment.trend === "rising" ? 1 : f.unemployment.trend === "falling" ? -1 : 0;
+          if (du) drivers.push({ category: "Labor market", dir: du, weight: 1.5,
+            title: "Unemployment " + f.unemployment.latest + "% and " + f.unemployment.trend, url: null, source: "FRED" });
+        }
+      }
+      if (extra.llm && extra.llm.summary) llmSummary = extra.llm.summary;
+    }
+
     var score = drivers.reduce(function (a, d) { return a + d.dir * d.weight; }, 0);
     var totalW = drivers.reduce(function (a, d) { return a + d.weight; }, 0) || 1;
     var agreement = Math.abs(score) / totalW; // 0..1, how lopsided the picture is
@@ -164,6 +200,15 @@ CP.macro = (function () {
     // Upcoming high-impact events as a heads-up (outcome unknown -> no direction).
     var cautions = [];
     var soon = 3 * 86400000;
+    // Prefer backend calendar (it has forecasts) for the upcoming heads-up.
+    if (extra && extra.calendar) {
+      extra.calendar.forEach(function (c) {
+        if (!c.actual && c.impact === "High" && c.dateMs && c.dateMs > Date.now() &&
+            (c.dateMs - Date.now()) <= soon && cautions.length < 3) {
+          cautions.push(c.name + (c.forecast ? " (forecast " + c.forecast + ")" : ""));
+        }
+      });
+    }
     (events || []).forEach(function (e) {
       if (e.impact === "High" && e.sortT && (e.sortT - Date.now()) <= soon && cautions.length < 3) {
         cautions.push(e.name + " in " + e.countdown);
@@ -176,6 +221,7 @@ CP.macro = (function () {
       bullCount: drivers.filter(function (d) { return d.dir > 0; }).length,
       bearCount: drivers.filter(function (d) { return d.dir < 0; }).length,
       newsCount: items.length, cautions: cautions,
+      llmSummary: llmSummary, backed: !!extra,
     };
   }
 

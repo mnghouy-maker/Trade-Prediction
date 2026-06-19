@@ -27,13 +27,14 @@
       getChartCached("bitcoin"),
       getChartCached("ethereum"),
       CP.api.getNews(),
+      CP.api.getMacro(),
     ]).then(function (res) {
-      var simple = res[0], global = res[1], fg = res[2], btcChart = res[3], ethChart = res[4], news = res[5];
+      var simple = res[0], global = res[1], fg = res[2], btcChart = res[3], ethChart = res[4], news = res[5], macroExtra = res[6];
 
       var sent = CP.sentiment.analyze(news.items);
 
       return CP.api.getWhales(simple.data.bitcoin.usd).then(function (whales) {
-        return finish(simple, global, fg, btcChart, ethChart, news, sent, whales);
+        return finish(simple, global, fg, btcChart, ethChart, news, sent, whales, macroExtra);
       });
     }).catch(function (e) {
       console.error(e);
@@ -41,7 +42,7 @@
     });
   }
 
-  function finish(simple, global, fg, btcChart, ethChart, news, sent, whales) {
+  function finish(simple, global, fg, btcChart, ethChart, news, sent, whales, macroExtra) {
       var d = {
         simple: simple.data,
         global: { marketCap: global.marketCap, change24h: global.change24h },
@@ -64,7 +65,9 @@
       CP.state.result = result;
 
       // Global macro/news read — drives the Long/Short direction in the Trade tab.
-      d.macro = CP.macro.evaluate(d.sentiment, d.fearGreed, computeEvents());
+      // macroExtra (from the optional backend) adds calendar surprises + FRED
+      // trend + an LLM summary; null on the static site (browser-only fallback).
+      d.macro = CP.macro.evaluate(d.sentiment, d.fearGreed, computeEvents(), macroExtra);
       CP.state.macro = d.macro;
 
       // Keep BTC/ETH technicals in the per-coin cache so the selected-coin view
