@@ -192,6 +192,7 @@
     var plan = CP.trade.buildPlan(entry.tech, entry.chart.closes, CP.state.macro);
     CP.state.currentPlan = plan;
     renderTradeFromState();
+    if (CP.live) CP.live.setLevels(plan);
   }
 
   // ---- Selected-coin: technical + trade plan + calculator priming ----
@@ -271,6 +272,7 @@
       var plan = CP.trade.buildPlan(entry.tech, entry.chart.closes, CP.state.macro);
       CP.state.currentPlan = plan;
       renderTradeFromState();
+      if (CP.live) CP.live.setLevels(plan);   // draw entry/stop/TP on the candles
       primeCalculator(entry.tech.price, plan);
       if (CP.state.markets.length) CP.render.renderScreener(filteredSortedMarkets(), id);
       // Update detail panel with full tech data once loaded

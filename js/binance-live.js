@@ -1,18 +1,21 @@
 /* Live Binance market view for the Trade tab:
- *   - TradingView candlestick chart (official embed) for BINANCE:<symbol>
- *   - real-time order book (partial depth) and recent trades
- *   - live 24h header stats (price, change, high, low, volume)
- * Data comes straight from Binance's public WebSocket streams — no API key,
- * the same feed the Binance site uses. Spot market (matches the prices used
- * across the rest of the app). Sockets only run while the Trade tab is open. */
+ *   - candlestick chart (TradingView Lightweight Charts) fed by Binance klines
+ *     (REST history + live kline stream), with the Trade Signal's entry / stop /
+ *     take-profit levels drawn right on the chart so you can see where to act
+ *   - real-time order book (partial depth) and recent trades (locked to 10)
+ *   - live 24h header stats
+ * Public Binance WebSocket + REST — no API key. Spot market. Sockets/chart run
+ * only while the Trade tab is open. */
 CP.live = (function () {
   var U = CP.util;
   var WS_BASE = "wss://stream.binance.com:9443/stream?streams=";
+  var REST = (CP.config && CP.config.api && CP.config.api.binance) || "https://api.binance.com/api/v3";
+  var LIB = "https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js";
 
   var st = {
-    inited: false, active: false, chartFor: null,
-    coinId: null, binSym: null, meta: null,
-    ws: null, gen: 0, widget: null,
+    active: false, coinId: null, binSym: null, meta: null, interval: "15m",
+    ws: null, gen: 0,
+    chart: null, series: null, priceLines: [], resizeWired: false,
     book: null, trades: [], bookDirty: false, tradesDirty: false, rafPending: false,
     failCount: 0,
   };
@@ -20,36 +23,39 @@ CP.live = (function () {
   function el(id) { return U.el(id); }
   function setText(id, v) { var e = el(id); if (e) e.textContent = v; }
 
-  // ---- lifecycle ----
+  // ---------- lifecycle ----------
   function activate() {
     st.active = true;
-    ensureChart();
+    ensureChart(function () { if (st.binSym) loadKlines(); });
     if (st.binSym) openSocket(); else if (st.coinId) showNote(noteFor());
+    resizeChart();
   }
   function deactivate() { st.active = false; closeSocket(); }
 
-  // Called whenever the selected coin changes (from app.selectCoin).
   function setSymbol(coinId, meta) {
     var prevSym = st.binSym, sameCoin = coinId === st.coinId;
     st.coinId = coinId;
     st.meta = meta || null;
     st.binSym = CP.api.binanceSymbol(coinId); // "BTCUSDT" or null
     paintHeaderStatic();
-    // Same symbol already set — just refresh the header/paper price; do NOT tear
+    setText("bxChartSym", (st.binSym || "—") + " · " + st.interval);
+    // Same symbol already set — just refresh the header/paper price; don't tear
     // down and reconnect the socket (that would flicker the book/trades).
     if (sameCoin && st.binSym && st.binSym === prevSym) {
       CP.paper.setContext(st.binSym, meta ? meta.symbol : st.binSym, meta ? meta.price : 0);
       return;
     }
+    clearLevels();
     if (st.binSym) {
       hideNote();
       CP.paper.setContext(st.binSym, meta ? meta.symbol : st.binSym, meta ? meta.price : 0);
-      if (st.inited) ensureChartSymbol();
+      if (st.chart) loadKlines();
       if (st.active) openSocket();
     } else {
       CP.paper.setContext(null, "", 0);
       clearBookTrades();
       closeSocket();
+      if (st.series) { try { st.series.setData([]); } catch (e) {} }
       showNote(noteFor());
     }
   }
@@ -58,61 +64,120 @@ CP.live = (function () {
     return s + " isn’t listed as a USDT pair on Binance, so the live chart, order book and trades aren’t available for it. The Trade Signal above still works.";
   }
 
-  // ---- TradingView chart ----
-  function ensureChart() {
-    if (st.inited || !el("bxChart")) return;
-    loadTV(function () { st.inited = true; st.chartFor = null; ensureChartSymbol(); });
-  }
-  function ensureChartSymbol() {
-    if (!st.inited || !window.TradingView || !st.binSym) return;
-    if (st.chartFor === st.binSym) return;
-    st.chartFor = st.binSym;
-    var host = el("bxChart");
-    if (!host) return;
-    host.innerHTML = "";
-    try {
-      st.widget = new window.TradingView.widget({
-        container_id: "bxChart",
-        symbol: "BINANCE:" + st.binSym,
-        interval: "15",
-        theme: "dark",
-        style: "1",
-        locale: "en",
-        timezone: "Etc/UTC",
-        autosize: true,
-        hide_side_toolbar: true,
-        allow_symbol_change: false,
-        backgroundColor: "rgba(13,17,28,1)",
-        gridColor: "rgba(255,255,255,0.05)",
+  // ---------- candlestick chart (Lightweight Charts) ----------
+  function ensureChart(cb) {
+    if (st.chart) { if (cb) cb(); return; }
+    var host = el("bxChart"); if (!host) return;
+    loadLib(function () {
+      if (st.chart || !window.LightweightCharts) { if (cb) cb(); return; }
+      var LC = window.LightweightCharts;
+      st.chart = LC.createChart(host, {
+        width: host.clientWidth || 600, height: 460,
+        layout: { background: { type: "solid", color: "#0d111c" }, textColor: "#8b9bb0" },
+        grid: { vertLines: { color: "rgba(255,255,255,0.04)" }, horzLines: { color: "rgba(255,255,255,0.04)" } },
+        timeScale: { timeVisible: true, secondsVisible: false, borderColor: "rgba(255,255,255,0.10)" },
+        rightPriceScale: { borderColor: "rgba(255,255,255,0.10)" },
+        crosshair: { mode: 0 },
       });
-    } catch (e) { showNote("Couldn’t start the TradingView chart."); }
+      st.series = st.chart.addCandlestickSeries({
+        upColor: "#16c784", downColor: "#f03542", borderVisible: false,
+        wickUpColor: "#16c784", wickDownColor: "#f03542",
+      });
+      wireIntervalButtons();
+      if (!st.resizeWired) { window.addEventListener("resize", resizeChart); st.resizeWired = true; }
+      if (cb) cb();
+    });
   }
-  function loadTV(cb) {
-    if (window.TradingView) { cb(); return; }
-    if (document.getElementById("tvjs")) { waitTV(cb, 0); return; }
+  function loadLib(cb) {
+    if (window.LightweightCharts) { cb(); return; }
+    if (document.getElementById("lwc-lib")) { waitLib(cb, 0); return; }
     var s = document.createElement("script");
-    s.id = "tvjs"; s.src = "https://s3.tradingview.com/tv.js"; s.async = true;
-    s.onload = function () { waitTV(cb, 0); };
-    s.onerror = function () { showNote("Couldn’t load the TradingView chart (network blocked?)."); };
+    s.id = "lwc-lib"; s.src = LIB; s.async = true;
+    s.onload = function () { waitLib(cb, 0); };
+    s.onerror = function () { showNote("Couldn’t load the chart library (network blocked?). Order book, trades and the signal still work."); };
     document.head.appendChild(s);
   }
-  function waitTV(cb, tries) {
-    if (window.TradingView) { cb(); return; }
-    if (tries > 40) return;
-    setTimeout(function () { waitTV(cb, tries + 1); }, 150);
+  function waitLib(cb, n) {
+    if (window.LightweightCharts) { cb(); return; }
+    if (n > 40) return;
+    setTimeout(function () { waitLib(cb, n + 1); }, 150);
+  }
+  function resizeChart() {
+    if (!st.chart) return;
+    var host = el("bxChart");
+    if (host && host.clientWidth) { try { st.chart.resize(host.clientWidth, 460); } catch (e) {} }
   }
 
-  // ---- WebSocket: depth + aggTrade + ticker (one combined stream) ----
+  function loadKlines() {
+    if (!st.series || !st.binSym) return;
+    var sym = st.binSym, iv = st.interval;
+    var url = REST + "/klines?symbol=" + sym + "&interval=" + iv + "&limit=300";
+    U.fetchJSON(url, 12000).then(function (k) {
+      if (!k || !k.length || sym !== st.binSym || iv !== st.interval) return;
+      st.series.setData(k.map(function (c) {
+        return { time: Math.floor(c[0] / 1000), open: +c[1], high: +c[2], low: +c[3], close: +c[4] };
+      }));
+      st.chart.timeScale().fitContent();
+      setLevels(CP.state && CP.state.currentPlan);
+    }).catch(function () {
+      showNote("Couldn’t load chart history from Binance (network?). The order book and signal still work.");
+    });
+  }
+  function onKline(k) {
+    if (!st.series || !k) return;
+    st.series.update({ time: Math.floor(k.t / 1000), open: +k.o, high: +k.h, low: +k.l, close: +k.c });
+  }
+
+  // Draw the Trade Signal's entry / stop / take-profit levels on the chart.
+  function clearLevels() {
+    if (st.series) st.priceLines.forEach(function (l) { try { st.series.removePriceLine(l); } catch (e) {} });
+    st.priceLines = [];
+  }
+  function setLevels(plan) {
+    if (!st.series) return;
+    clearLevels();
+    if (!plan || !plan.entry) return;
+    var isLong = plan.side === "long";
+    addLine(plan.entry, "#e8edf2", (isLong ? "LONG entry" : "SHORT entry"));
+    addLine(plan.stop, "#f03542", "Stop loss");
+    (plan.targets || []).forEach(function (t, i) { addLine(t, "#16c784", "TP" + (i + 1)); });
+  }
+  function addLine(price, color, title) {
+    if (!(price > 0) || !st.series) return;
+    try {
+      st.priceLines.push(st.series.createPriceLine({
+        price: price, color: color, lineWidth: 2, lineStyle: 2, axisLabelVisible: true, title: title,
+      }));
+    } catch (e) {}
+  }
+
+  function wireIntervalButtons() {
+    var bar = document.querySelector(".bx-iv-group");
+    if (!bar || bar._wired) return;
+    bar._wired = true;
+    bar.addEventListener("click", function (e) {
+      var b = e.target.closest(".bx-iv");
+      if (!b) return;
+      var iv = b.getAttribute("data-iv");
+      if (iv === st.interval) return;
+      st.interval = iv;
+      document.querySelectorAll(".bx-iv").forEach(function (x) { x.classList.toggle("active", x === b); });
+      setText("bxChartSym", (st.binSym || "—") + " · " + iv);
+      loadKlines();
+      if (st.active) openSocket(); // re-subscribe the kline stream at the new interval
+    });
+  }
+
+  // ---------- WebSocket: depth + aggTrade + ticker + kline (combined) ----------
   function openSocket() {
     closeSocket();
     if (!st.binSym) return;
     var gen = ++st.gen;
-    var lower = st.binSym.toLowerCase();
-    var url = WS_BASE + lower + "@depth20@100ms/" + lower + "@aggTrade/" + lower + "@ticker";
+    var l = st.binSym.toLowerCase();
+    var url = WS_BASE + l + "@depth20@100ms/" + l + "@aggTrade/" + l + "@ticker/" + l + "@kline_" + st.interval;
     var ws;
     try { ws = new WebSocket(url); } catch (e) { showNote("Live feed unavailable on this network."); return; }
-    st.ws = ws;
-    st.trades = [];
+    st.ws = ws; st.trades = [];
     if (el("bxBook")) el("bxBook").innerHTML = '<div class="skeleton">Connecting to Binance…</div>';
     if (el("bxTrades")) el("bxTrades").innerHTML = '<div class="skeleton">Connecting…</div>';
 
@@ -122,18 +187,16 @@ CP.live = (function () {
       var msg; try { msg = JSON.parse(ev.data); } catch (e) { return; }
       var stream = msg.stream || "", d = msg.data || {};
       if (stream.indexOf("@depth") !== -1) { st.book = d; st.bookDirty = true; schedulePaint(); }
-      else if (stream.indexOf("@aggTrade") !== -1) { onTrade(d); }
-      else if (stream.indexOf("@ticker") !== -1) { onTicker(d); }
+      else if (stream.indexOf("@aggTrade") !== -1) onTrade(d);
+      else if (stream.indexOf("@ticker") !== -1) onTicker(d);
+      else if (stream.indexOf("@kline") !== -1) onKline(d.k);
     };
     ws.onerror = function () { try { ws.close(); } catch (e) {} };
     ws.onclose = function () {
       if (gen !== st.gen || !st.active) return;
       st.failCount++;
-      if (st.failCount <= 5) {
-        setTimeout(function () { if (gen === st.gen && st.active) openSocket(); }, 2000);
-      } else {
-        showNote("Live feed dropped — Binance may be blocked on this network. The chart and signal still work.");
-      }
+      if (st.failCount <= 5) setTimeout(function () { if (gen === st.gen && st.active) openSocket(); }, 2000);
+      else showNote("Live feed dropped — Binance may be blocked on this network. The chart and signal still work.");
     };
   }
   function closeSocket() {
@@ -143,12 +206,11 @@ CP.live = (function () {
 
   function onTrade(d) {
     st.trades.unshift({ p: +d.p, q: +d.q, m: d.m, t: d.T });
-    if (st.trades.length > 30) st.trades.length = 30;
+    if (st.trades.length > 10) st.trades.length = 10; // locked at 10
     st.tradesDirty = true; schedulePaint();
   }
   function onTicker(d) {
-    var last = +d.c, chg = +d.P;
-    var dp = last < 1 ? 4 : 2;
+    var last = +d.c, chg = +d.P, dp = last < 1 ? 4 : 2;
     setText("bxPrice", U.fmtUSD(last, dp));
     var pr = el("bxPrice"); if (pr) pr.className = "bx-price " + (chg >= 0 ? "up" : "down");
     setText("bxChange", U.fmtPct(chg, true) + " (24h)");
@@ -161,7 +223,7 @@ CP.live = (function () {
     var pp = el("paperPrice"); if (pp && !pp.value) pp.value = +last.toFixed(last < 1 ? 6 : 2);
   }
 
-  // ---- render order book + trades (throttled to one animation frame) ----
+  // ---------- render book + trades (throttled to one animation frame) ----------
   function schedulePaint() {
     if (st.rafPending) return;
     st.rafPending = true;
@@ -174,8 +236,8 @@ CP.live = (function () {
   function numRow(a) { return { p: +a[0], q: +a[1] }; }
   function renderBook() {
     var box = el("bxBook"); if (!box || !st.book) return;
-    var asks = (st.book.asks || []).slice(0, 14).map(numRow); // ascending (best first)
-    var bids = (st.book.bids || []).slice(0, 14).map(numRow); // descending (best first)
+    var asks = (st.book.asks || []).slice(0, 12).map(numRow);
+    var bids = (st.book.bids || []).slice(0, 12).map(numRow);
     if (!asks.length && !bids.length) return;
     var maxQ = 1;
     asks.concat(bids).forEach(function (r) { if (r.q > maxQ) maxQ = r.q; });
@@ -200,7 +262,7 @@ CP.live = (function () {
   function renderTrades() {
     var box = el("bxTrades"); if (!box) return;
     box.innerHTML = '<div class="bx-trades-head"><span>Price</span><span>Amount</span><span>Time</span></div>' +
-      st.trades.map(function (t) {
+      st.trades.slice(0, 10).map(function (t) {
         var cls = t.m ? "down" : "up"; // m=true: buyer is maker -> sell aggressor (red)
         var dp = t.p < 1 ? 5 : 2;
         return '<div class="bx-trade ' + cls + '"><span>' + U.fmtUSD(t.p, dp) + "</span>" +
@@ -213,8 +275,6 @@ CP.live = (function () {
     if (el("bxBook")) el("bxBook").innerHTML = "";
     if (el("bxTrades")) el("bxTrades").innerHTML = "";
   }
-
-  // Paint the header from cached coin meta right away (before live data lands).
   function paintHeaderStatic() {
     var m = st.meta || {};
     setText("bxSymbol", st.binSym || (m.symbol ? m.symbol + "USDT" : (st.coinId || "").toUpperCase()));
@@ -234,5 +294,5 @@ CP.live = (function () {
   }
   function hideNote() { var n = el("bxChartNote"); if (n) n.classList.add("hidden"); }
 
-  return { activate: activate, deactivate: deactivate, setSymbol: setSymbol };
+  return { activate: activate, deactivate: deactivate, setSymbol: setSymbol, setLevels: setLevels };
 })();

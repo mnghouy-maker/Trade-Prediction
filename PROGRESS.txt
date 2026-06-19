@@ -1,4 +1,42 @@
 ===========================================
+DATE: 6/19/2026 (Session 10 — buy/sell levels on chart + trades capped)
+-------------------------------------------
+DONE TODAY:
+- Buy/sell levels ON the candlestick chart. The TradingView EMBED is a sealed
+  iframe we can't draw on, so the chart was rebuilt with TradingView's free
+  Lightweight Charts library:
+  * candles drawn from Binance klines (REST history, limit 300) + live updates
+    from the <sym>@kline_<interval> WebSocket stream.
+  * the Trade Signal's levels are drawn right on the chart as labelled dashed
+    price lines — "LONG/SHORT entry" (white), "Stop loss" (red), "TP1/2/3"
+    (green) — via series.createPriceLine(). app.js calls CP.live.setLevels(plan)
+    whenever a plan is (re)built, so the lines track the signal + coin.
+  * added an interval switcher (1m/5m/15m/1h/4h/1D), default 15m, plus a
+    "<SYMBOL> · <interval>" label.
+- Recent trades LOCKED at 10 (was 30): onTrade trims to 10, renderTrades slices
+  10. New trades still come in on top; the list no longer grows.
+- binance-live.js rewritten around the new chart; kept order book + trades +
+  ticker on the same combined socket (added the kline stream). Lightweight
+  Charts loads lazily from unpkg on first Trade-tab open; graceful note if it
+  or the feed is blocked.
+- CSS for the chart bar / interval buttons; chart height 460. Cache-busters
+  v15 -> v16.
+
+DECISIONS MADE:
+- Switched chart tech from the TradingView embed to Lightweight Charts purely so
+  we CAN overlay the buy/sell levels (the embed can't). Trade-off: we lose the
+  embed's built-in indicator menu, but RSI/MA/MACD already live in Analysis and
+  the signal. Candlesticks + the entry/stop/TP overlay is the win.
+
+HONEST LIMITS:
+- Still no browser in the sandbox — syntax verified, but the live chart render,
+  the kline stream and the price-line overlay need a real-browser check.
+
+STILL PENDING / NEXT TIME:
+- Confirm in-browser that the chart loads, candles stream, and the entry/stop/TP
+  lines show on the right prices. Phase-3 backend still needs hosting.
+
+===========================================
 DATE: 6/19/2026 (Session 9 — live UX fixes from Nimith's feedback)
 -------------------------------------------
 DONE TODAY (after deploying phases 1-3 to the live link):
