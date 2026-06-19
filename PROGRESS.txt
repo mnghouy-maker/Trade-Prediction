@@ -1,4 +1,52 @@
 ===========================================
+DATE: 6/19/2026 (Session 6 — macro/news Long/Short signal, phase 1)
+-------------------------------------------
+DONE TODAY:
+- Reworked the Trade Signal so it always gives a clear directional call —
+  LONG or SHORT, never "WAIT" — for the selected coin, with Entry, Stop Loss
+  and three Take Profit targets shown as price, % move AND the $ profit/loss
+  for a position size you type in (defaults to $1,000, updates live).
+- New engine js/macro.js: reads the live classified news feed + Fear & Greed +
+  the economic calendar and turns global macro events into a Long/Short bias
+  using the trader cheat-sheet (lower inflation / rate cuts / more liquidity /
+  dovish Fed / ETF approvals = bullish; higher inflation / hikes / less
+  liquidity / hawkish Fed / crackdowns / war / financial stress = bearish).
+  Topics covered: CPI/PCE, Fed/rates, NFP/jobs, GDP, ETF/adoption, regulation,
+  liquidity, geopolitics, banking stress, and China/ECB/BoJ.
+- Direction logic: macro/news LEADS, technicals (200/50-day MA, RSI, MACD)
+  CONFIRM; if they conflict, confidence drops. Levels (entry/stop/targets) come
+  from recent volatility + 30-day support/resistance.
+- The signal shows "Why LONG/SHORT" — each reason links out to the actual
+  headline it came from, tagged by category (e.g. "Inflation (CPI/PCE)").
+  Upcoming high-impact events (FOMC/CPI within ~3 days) show as a volatility
+  heads-up.
+- Wiring: js/trade.js buildPlan() rebuilt to take the macro read and always
+  pick a side; js/render.js renderTrade() rebuilt (levels + $ + linked reasons);
+  js/app.js computes the macro read each 30s refresh and the position-size box
+  re-computes the $ amounts. index.html got the position-size input + macro.js
+  script; all cache-busters bumped v11 -> v12. CSS added under TRADE SIGNAL.
+- Smoke-tested the engine in Node: bullish set (CPI cools, Fed cut, ETF inflows)
+  -> LONG with links + FOMC heads-up; bearish set (hot CPI, hikes, SEC charges)
+  -> SHORT even on a bullish chart, with lower confidence (technical conflict).
+
+DECISIONS MADE:
+- Phase 1 is browser-only and free, deploys to the existing site. It reads the
+  DIRECTION a headline reports (e.g. "CPI cools", "Fed hikes"), NOT the surprise
+  vs the consensus forecast — that needs the backend (phase 3).
+- News currently comes from the CryptoCompare feed already wired in (covers
+  CoinDesk, Cointelegraph, Decrypt, etc.). Bloomberg/WSJ/FT, the X accounts and
+  paid on-chain (Glassnode/CryptoQuant) stay out until/unless we add a backend.
+- Build order agreed with Nimith: do ALL three phases, confirm after each one.
+
+STILL PENDING / NEXT TIME (build all, confirm each):
+- PHASE 2: Binance-style Trade tab look — live TradingView chart, order book,
+  recent trades, paper buy/sell.
+- PHASE 3: backend macro engine — adds "higher/lower than expected" logic via
+  economic-calendar forecast feeds (Forex Factory / Investing.com / Trading
+  Economics), more sources (CryptoPanic, RSS, BLS/BEA, FRED, US Treasury) and
+  optional LLM-written reasons. Needs hosting + a few free API keys.
+
+===========================================
 DATE: 6/18/2026 (Session 5c — hide password from inspect)
 -------------------------------------------
 DONE TODAY:

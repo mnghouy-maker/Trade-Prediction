@@ -664,6 +664,51 @@ table.data tbody tr:last-child td { border-bottom: none; }
   border: 1px solid var(--border); border-left: 3px solid var(--neutral); line-height: 1.5;
 }
 
+/* position-size box */
+.trade-possize { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 4px; }
+.trade-possize label { font-size: 12px; color: var(--text-dim); font-weight: 600; }
+.trade-possize input {
+  width: 120px; background: var(--bg-elev2); border: 1px solid var(--border);
+  color: var(--text); border-radius: 8px; padding: 7px 10px; font-family: inherit;
+  font-size: 13px; font-variant-numeric: tabular-nums;
+}
+.trade-possize input:focus { outline: none; border-color: var(--accent); }
+.trade-possize .card-sub { font-size: 11px; }
+
+/* $ profit/loss tag on each level row */
+.lvl-usd { font-size: 11px; font-weight: 700; margin-left: 8px; font-variant-numeric: tabular-nums; }
+
+/* "Why LONG/SHORT" — reasons with linked headlines */
+.trade-why { display: flex; flex-direction: column; gap: 6px; }
+.why-head {
+  font-size: 12px; font-weight: 700; color: var(--text-dim);
+  text-transform: uppercase; letter-spacing: 0.4px; margin-top: 2px;
+}
+.why-item {
+  display: flex; gap: 8px; align-items: flex-start; font-size: 12.5px; line-height: 1.45;
+  padding: 8px 11px; background: var(--bg-elev2); border: 1px solid var(--border);
+  border-left: 3px solid var(--neutral); border-radius: 8px; color: var(--text-dim);
+}
+.why-item.pos { border-left-color: var(--bull); }
+.why-item.neg { border-left-color: var(--bear); }
+.why-arrow { font-size: 11px; line-height: 1.6; }
+.why-item.pos .why-arrow { color: var(--bull); }
+.why-item.neg .why-arrow { color: var(--bear); }
+.why-text { flex: 1; }
+.why-text a { color: var(--text); text-decoration: none; border-bottom: 1px solid rgba(255,255,255,0.14); }
+.why-text a:hover { color: var(--accent); border-bottom-color: var(--accent); }
+.why-tag {
+  display: block; margin-top: 3px; font-size: 10.5px; color: var(--text-faint);
+  font-weight: 600; text-transform: uppercase; letter-spacing: 0.3px;
+}
+
+/* upcoming high-impact event heads-up */
+.trade-caution {
+  font-size: 12px; color: var(--neutral); background: var(--neutral-glow);
+  border: 1px solid rgba(240,160,32,0.2); border-radius: 8px; padding: 8px 11px; line-height: 1.45;
+}
+.trade-disclaimer { font-size: 11px; color: var(--text-faint); line-height: 1.4; }
+
 /* ============================================================
    PROFIT CALCULATOR
    ============================================================ */

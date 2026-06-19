@@ -63,6 +63,10 @@
       CP.state.data = d;
       CP.state.result = result;
 
+      // Global macro/news read — drives the Long/Short direction in the Trade tab.
+      d.macro = CP.macro.evaluate(d.sentiment, d.fearGreed, computeEvents());
+      CP.state.macro = d.macro;
+
       // Keep BTC/ETH technicals in the per-coin cache so the selected-coin view
       // shares one code path with screener-selected altcoins.
       CP.state.coinCache.bitcoin = { tech: d.tech.bitcoin, chart: d.charts.bitcoin };
@@ -225,14 +229,26 @@
 
     techFor(id).then(function (entry) {
       CP.render.renderTechnical({ symbol: meta.symbol, tech: entry.tech, change24h: meta.change24h, volume: meta.volume });
-      var plan = CP.trade.buildPlan(entry.tech, entry.chart.closes);
+      var plan = CP.trade.buildPlan(entry.tech, entry.chart.closes, CP.state.macro);
       CP.state.currentPlan = plan;
-      CP.render.renderTrade(plan, meta.symbol, entry.tech.price);
+      renderTradeFromState();
       primeCalculator(entry.tech.price, plan);
       if (CP.state.markets.length) CP.render.renderScreener(filteredSortedMarkets(), id);
       // Update detail panel with full tech data once loaded
       CP.render.renderCoinDetail(screenerCoin, entry.tech);
     });
+  }
+
+  // Re-render the Trade Signal from the current plan, reading the position-size
+  // box so the $ profit/loss at each level updates live as it's typed.
+  function renderTradeFromState() {
+    var plan = CP.state.currentPlan;
+    if (!plan) return;
+    var meta = metaFor(CP.state.selectedCoin);
+    var posEl = U.el("tradePosSize");
+    var pos = posEl ? parseFloat(posEl.value) : 1000;
+    if (isNaN(pos) || pos < 0) pos = 0;
+    CP.render.renderTrade(plan, meta.symbol, plan.entry, pos);
   }
 
   // ---- Profit calculator ----
@@ -420,6 +436,10 @@
         }
       });
     }
+
+    // Trade Signal: position-size box re-computes the $ profit/loss at each level
+    var posEl = U.el("tradePosSize");
+    if (posEl) posEl.addEventListener("input", renderTradeFromState);
 
     // Calculator: live recompute + side toggle + presets
     ["calcEntry", "calcExit", "calcQty", "calcLev", "calcFee", "calcNotional"].forEach(function (id) {

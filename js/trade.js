@@ -1,6 +1,7 @@
 /* Actionable trade engine:
- *   - buildPlan(): turns indicators into BUY / SELL / WAIT with entry, stop,
- *     take-profit ladder, risk:reward and confidence ("when to enter").
+ *   - buildPlan(): combines the global macro/news read with the technical trend
+ *     into a directional call (always LONG or SHORT) with entry, stop, a
+ *     take-profit ladder, risk:reward, confidence and linked reasons.
  *   - calcPnl(): Binance-style futures PnL / ROE / liquidation math.
  */
 CP.trade = (function () {
@@ -14,7 +15,12 @@ CP.trade = (function () {
   }
 
   // closes: oldest→newest daily closes; tech: CP.indicators.compute(closes)
-  function buildPlan(tech, closes) {
+  // macro:  output of CP.macro.evaluate() (optional) — the global news/macro read.
+  //
+  // Always returns a directional call (LONG or SHORT, never WAIT): the macro/news
+  // bias leads the direction, the technical trend confirms it, and the price
+  // levels (entry/stop/targets) come from recent volatility + support/resistance.
+  function buildPlan(tech, closes, macro) {
     var price = tech.price;
     var recent = closes.slice(-30);
     var support = Math.min.apply(null, recent);
@@ -33,43 +39,72 @@ CP.trade = (function () {
     var aboveLong = tech.sma200 == null || price > tech.sma200;
     var aboveShort = tech.sma50 == null || price > tech.sma50;
 
-    // Directional bias from trend + momentum alignment.
+    // Technical bias from trend + momentum (0..4 bullish points).
     var bullPts = (aboveLong ? 1 : 0) + (aboveShort ? 1 : 0) + (rsi > 50 ? 1 : 0) + (macdBull ? 1 : 0);
-    var bias = bullPts >= 3 ? "bullish" : bullPts <= 1 ? "bearish" : "mixed";
+    var techDir = bullPts >= 3 ? 1 : bullPts <= 1 ? -1 : 0;
 
-    var notes = [];
-    var action, side, entry = price, stop, targets, rr;
+    // Macro/news bias leads; fall back to technicals, then momentum, so we
+    // always commit to a side.
+    var macroDir = macro && macro.bias === "Long" ? 1 : macro && macro.bias === "Short" ? -1 : 0;
+    var sideSign;
+    if (macroDir !== 0) sideSign = macroDir;
+    else if (techDir !== 0) sideSign = techDir;
+    else sideSign = (rsi >= 50 || aboveShort) ? 1 : -1;
 
-    if (bias === "bullish" && rsi < 72) {
-      action = "BUY"; side = "long";
+    var side = sideSign > 0 ? "long" : "short";
+    var action = sideSign > 0 ? "LONG" : "SHORT";
+
+    var entry = price, stop, targets, rr;
+    if (side === "long") {
       stop = Math.min(price - 1.5 * atr, support * 0.999);
       var risk = entry - stop;
       targets = [entry + risk * 1.5, entry + risk * 3, Math.max(entry + risk * 5, resistance)];
       rr = (targets[0] - entry) / risk;
-      notes.push("Trend up & momentum positive — buy dips toward entry, invalidate below stop.");
-      if (price < tech.sma50) notes.push("Price under 50-day MA: wait for reclaim for a stronger entry.");
-    } else if (bias === "bearish" && rsi > 28) {
-      action = "SELL"; side = "short";
+    } else {
       stop = Math.max(price + 1.5 * atr, resistance * 1.001);
       var riskS = stop - entry;
       targets = [entry - riskS * 1.5, entry - riskS * 3, Math.min(entry - riskS * 5, support)];
       rr = (entry - targets[0]) / riskS;
-      notes.push("Trend down & momentum negative — sell rallies toward entry, invalidate above stop.");
-    } else {
-      action = "WAIT"; side = "flat";
-      stop = null; targets = null; rr = null;
-      if (rsi >= 72) notes.push("RSI overbought (" + rsi.toFixed(0) + ") — risk of pullback, wait for cooldown.");
-      else if (rsi <= 28) notes.push("RSI oversold (" + rsi.toFixed(0) + ") — possible bounce, wait for confirmation.");
-      else notes.push("Signals are mixed — no clean edge. Wait for trend + momentum to align.");
     }
 
-    var confidence = Math.round((Math.abs(bullPts - 2) / 2) * 100); // 0 at mixed, 100 at full alignment
-    if (action === "WAIT") confidence = Math.min(confidence, 45);
+    // Confidence: agreement between macro and technicals, weighted by strength.
+    var techAgree = techDir !== 0 && techDir * sideSign > 0;
+    var techConflict = techDir !== 0 && techDir * sideSign < 0;
+    var macroAgree = macroDir !== 0 && macroDir * sideSign > 0;
+    var macroConf = macro ? macro.confidence : 0;
+    var techStrength = Math.round((Math.abs(bullPts - 2) / 2) * 100); // 0 mixed → 100 aligned
+
+    var confidence = 45;
+    if (macroAgree) confidence += Math.round(macroConf * 0.35);
+    else if (macroDir !== 0) confidence -= Math.round(macroConf * 0.25);
+    if (techAgree) confidence += Math.round(techStrength * 0.22);
+    else if (techConflict) confidence -= Math.round(techStrength * 0.18);
+    confidence = Math.max(10, Math.min(96, confidence));
+
+    // Reasons: macro/news drivers (with source links) first, then a technical summary.
+    var reasons = [];
+    if (macro && macro.topDrivers) {
+      macro.topDrivers.forEach(function (d) {
+        reasons.push({ dir: d.dir, category: d.category, text: d.title, url: d.url, source: d.source });
+      });
+    }
+    var techBits = [
+      (aboveLong ? "above" : "below") + " 200-day MA",
+      (aboveShort ? "above" : "below") + " 50-day MA",
+      "RSI " + rsi.toFixed(0),
+      "MACD " + (macdBull ? "bullish" : "bearish"),
+    ];
+    reasons.push({ dir: techDir, category: "Technical trend", text: "Price " + techBits.join(", ") + ".", url: null, source: "Technicals" });
+
+    var biasLabel = macro ? macro.bias : "Neutral";
 
     return {
-      action: action, side: side, bias: bias, entry: entry, stop: stop, targets: targets,
+      action: action, side: side, bias: biasLabel, entry: entry, stop: stop, targets: targets,
       support: support, resistance: resistance, rr: rr, atr: atr, volPct: volPct,
-      rsi: rsi, confidence: confidence, notes: notes,
+      rsi: rsi, confidence: confidence, reasons: reasons,
+      macroBias: biasLabel, macroConfidence: macroConf, techDir: techDir, macroDir: macroDir,
+      cautions: (macro && macro.cautions) || [],
+      notes: reasons.map(function (r) { return r.text; }),
     };
   }
 

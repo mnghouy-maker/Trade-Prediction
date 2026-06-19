@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="preconnect" href="https://api.coingecko.com" />
   <link rel="preconnect" href="https://api.alternative.me" />
-  <link rel="stylesheet" href="css/styles.css?v=11" />
+  <link rel="stylesheet" href="css/styles.css?v=12" />
 </head>
 <body>
 
@@ -25,7 +25,7 @@
 
       <!-- Left: photo / brand panel -->
       <div class="login-aside">
-        <img class="login-aside-img" src="img/login-bg.jpg?v=11" alt="" onerror="this.remove()" />
+        <img class="login-aside-img" src="img/login-bg.jpg?v=12" alt="" onerror="this.remove()" />
         <svg class="login-aside-glyph" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <!-- Lucide: wallet -->
@@ -370,6 +370,11 @@
           <h2>Trade Signal</h2>
           <span id="tradeCoinLabel" class="card-sub">BTC</span>
         </div>
+        <div class="trade-possize">
+          <label for="tradePosSize">Position size (USD)</label>
+          <input id="tradePosSize" type="number" min="0" step="any" value="1000" />
+          <span class="card-sub">shows the $ profit / loss at each level</span>
+        </div>
         <div id="tradeBody" class="trade-body"><div class="skeleton">Building trade plan…</div></div>
       </div>
 
@@ -510,19 +515,20 @@
 
   <div id="toasts" class="toasts"></div>
 
-  <script src="js/config.js?v=11"></script>
-  <script src="js/util.js?v=11"></script>
-  <script src="js/indicators.js?v=11"></script>
-  <script src="js/api.js?v=11"></script>
-  <script src="js/sentiment.js?v=11"></script>
-  <script src="js/score.js?v=11"></script>
-  <script src="js/alerts.js?v=11"></script>
-  <script src="js/history.js?v=11"></script>
-  <script src="js/backtest.js?v=11"></script>
-  <script src="js/markets.js?v=11"></script>
-  <script src="js/trade.js?v=11"></script>
-  <script src="js/render.js?v=11"></script>
-  <script src="js/app.js?v=11"></script>
-  <script src="js/auth.js?v=11"></script>
+  <script src="js/config.js?v=12"></script>
+  <script src="js/util.js?v=12"></script>
+  <script src="js/indicators.js?v=12"></script>
+  <script src="js/api.js?v=12"></script>
+  <script src="js/sentiment.js?v=12"></script>
+  <script src="js/score.js?v=12"></script>
+  <script src="js/macro.js?v=12"></script>
+  <script src="js/alerts.js?v=12"></script>
+  <script src="js/history.js?v=12"></script>
+  <script src="js/backtest.js?v=12"></script>
+  <script src="js/markets.js?v=12"></script>
+  <script src="js/trade.js?v=12"></script>
+  <script src="js/render.js?v=12"></script>
+  <script src="js/app.js?v=12"></script>
+  <script src="js/auth.js?v=12"></script>
 </body>
 </html>

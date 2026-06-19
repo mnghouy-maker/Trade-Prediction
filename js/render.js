@@ -386,40 +386,76 @@ CP.render = (function () {
   }
 
   // ---------- trade signal ----------
-  function renderTrade(plan, label, price) {
-    var color = plan.action === "BUY" ? "var(--bull)" : plan.action === "SELL" ? "var(--bear)" : "var(--neutral)";
-    var verb = plan.action === "BUY" ? "BUY / LONG" : plan.action === "SELL" ? "SELL / SHORT" : "WAIT";
+  // plan: from CP.trade.buildPlan(); posSize: position size in USD used to show
+  // the $ profit / loss at each level (0 hides the $ column).
+  function renderTrade(plan, label, price, posSize) {
+    var isLong = plan.side === "long";
+    var color = isLong ? "var(--bull)" : "var(--bear)";
+    var verb = isLong ? "LONG" : "SHORT";
+    var entry = plan.entry;
+    posSize = posSize > 0 ? posSize : 0;
+    var qty = (posSize > 0 && entry > 0) ? posSize / entry : 0;
+
     function pctFrom(target) {
-      return U.fmtPct(((target - plan.entry) / plan.entry) * 100, true);
+      return U.fmtPct(((target - entry) / entry) * 100, true);
     }
-    var levels = "";
-    if (plan.action !== "WAIT") {
-      var rMult = [1.5, 3, 5];
-      levels =
-        '<div class="trade-levels">' +
-        levelRow("Entry", plan.entry, "", "var(--text)") +
-        levelRow("Stop loss", plan.stop, pctFrom(plan.stop), "var(--bear)") +
-        plan.targets.map(function (t, i) {
-          return levelRow("Target " + (i + 1) + " (" + rMult[i] + "R)", t, pctFrom(t), "var(--bull)");
-        }).join("") +
-        "</div>" +
-        '<div class="trade-rr">Risk : Reward <strong>1 : ' + (plan.rr ? plan.rr.toFixed(1) : "—") + "</strong>" +
-        " · Support " + U.fmtUSD(plan.support) + " · Resistance " + U.fmtUSD(plan.resistance) + "</div>";
-    } else {
-      levels = '<div class="trade-rr">Support ' + U.fmtUSD(plan.support) + " · Resistance " + U.fmtUSD(plan.resistance) +
-        " · RSI " + plan.rsi.toFixed(0) + "</div>";
+    // Signed P/L in USD at a price level for this side & position size.
+    function usdTag(level) {
+      if (!qty) return "";
+      var pl = (isLong ? (level - entry) : (entry - level)) * qty;
+      var cls = pl >= 0 ? "up" : "down";
+      return ' <span class="lvl-usd ' + cls + '">' + (pl >= 0 ? "+" : "-") + U.fmtUSD(Math.abs(pl)) + "</span>";
     }
+
+    var rMult = [1.5, 3, 5];
+    var levels =
+      '<div class="trade-levels">' +
+      levelRow("Entry", entry, "", "var(--text)", "") +
+      levelRow("Stop loss", plan.stop, pctFrom(plan.stop), "var(--bear)", usdTag(plan.stop)) +
+      plan.targets.map(function (t, i) {
+        return levelRow("Take profit " + (i + 1) + " (" + rMult[i] + "R)", t, pctFrom(t), "var(--bull)", usdTag(t));
+      }).join("") +
+      "</div>" +
+      '<div class="trade-rr">Risk : Reward <strong>1 : ' + (plan.rr ? plan.rr.toFixed(1) : "—") + "</strong>" +
+      " · Support " + U.fmtUSD(plan.support) + " · Resistance " + U.fmtUSD(plan.resistance) + "</div>";
+
+    // Why this call — macro/news drivers (linked) + the technical summary.
+    var why = (plan.reasons || []).map(function (r) {
+      var dcls = r.dir > 0 ? "pos" : r.dir < 0 ? "neg" : "";
+      var arrow = r.dir > 0 ? "▲" : r.dir < 0 ? "▼" : "—";
+      var head = r.url && r.url !== "#"
+        ? '<a href="' + U.escapeHtml(r.url) + '" target="_blank" rel="noopener">' + U.escapeHtml(r.text) + "</a>"
+        : U.escapeHtml(r.text);
+      var tag = r.category
+        ? '<span class="why-tag">' + U.escapeHtml(r.category) + (r.source ? " · " + U.escapeHtml(r.source) : "") + "</span>"
+        : "";
+      return '<div class="why-item ' + dcls + '"><span class="why-arrow">' + arrow + "</span>" +
+        '<span class="why-text">' + head + tag + "</span></div>";
+    }).join("");
+
+    var cautionHtml = (plan.cautions && plan.cautions.length)
+      ? '<div class="trade-caution">Heads-up: ' + plan.cautions.map(U.escapeHtml).join(" · ") +
+        " — high-impact events ahead, expect volatility.</div>"
+      : "";
+
+    var sub = "Confidence " + plan.confidence + "% · macro read: " + plan.macroBias +
+      (plan.macroConfidence ? " (" + plan.macroConfidence + "%)" : "");
+
     U.el("tradeBody").innerHTML =
       '<div class="trade-action" style="background:' + color + '22;border-color:' + color + '">' +
         '<span class="trade-verb" style="color:' + color + '">' + verb + "</span>" +
-        '<span class="trade-conf">' + plan.confidence + "% confidence · bias " + plan.bias + "</span></div>" +
+        '<span class="trade-conf">' + sub + "</span></div>" +
       levels +
-      '<ul class="trade-notes">' + plan.notes.map(function (n) { return "<li>" + U.escapeHtml(n) + "</li>"; }).join("") + "</ul>";
+      '<div class="trade-why"><div class="why-head">Why ' + verb + "</div>" + why + "</div>" +
+      cautionHtml +
+      '<div class="trade-disclaimer">Direction from global macro &amp; news plus technicals; ' +
+        'entry, stop and targets from recent volatility &amp; 30-day support/resistance. ' +
+        'Educational only — not financial advice.</div>';
   }
-  function levelRow(label, val, pct, color) {
+  function levelRow(label, val, pct, color, extra) {
     return '<div class="lvl-row"><span class="lvl-label">' + label + '</span>' +
       '<span class="lvl-val" style="color:' + color + '">' + U.fmtUSD(val, val < 1 ? 4 : 2) +
-      (pct ? ' <span class="lvl-pct">' + pct + "</span>" : "") + "</span></div>";
+      (pct ? ' <span class="lvl-pct">' + pct + "</span>" : "") + (extra || "") + "</span></div>";
   }
 
   // ---------- coin detail (Tools tab) ----------
