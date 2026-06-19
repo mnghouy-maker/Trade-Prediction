@@ -1,4 +1,43 @@
 ===========================================
+DATE: 6/19/2026 (Session 12 — chart still blank: drop the CDN library too)
+-------------------------------------------
+PROBLEM (2nd screenshot):
+- After session 11 the chart was STILL blank and 24h high/low/vol still "--",
+  even though the order-book notice showed. Two more blocks on his network:
+  (1) the Lightweight Charts library loads from a CDN (unpkg) — blocked; with no
+      library, no chart at all. (2) CryptoCompare appears blocked too (the CC
+      header poll never filled the stats). Only CoinGecko is reachable (the
+      header price came from the CoinGecko-fed screener).
+
+FIX (make it bulletproof — no external library, no Binance, CoinGecko-first):
+- Replaced the Lightweight Charts library with a SELF-CONTAINED <canvas>
+  candlestick renderer (js/binance-live.js draw()). No CDN, no library — can't
+  be blocked. Draws candles, the 5-line price grid + axis labels, and the
+  entry/stop/TP level lines with labels.
+- Chart DATA: CoinGecko OHLC first (reachable here — same host as the working
+  price/screener), upgraded to CryptoCompare's finer 1m/5m/15m candles only if
+  CC is reachable. Live updates via a 15s poll; if CC is blocked it keeps the
+  price moving via CoinGecko /simple/price.
+- Header 24h high/low now computed from the candles; 24h volume from the
+  CoinGecko screener meta — so no more "--" even with Binance + CryptoCompare
+  both blocked.
+- Order book + trades unchanged (Binance-only, graceful notice).
+- Cache-busters v17 -> v18.
+
+DECISIONS MADE:
+- Given his network blocks Binance AND CDNs (and likely CryptoCompare), the only
+  safe combo is: our own canvas renderer + CoinGecko data. That's what's shipped.
+  Trade-off: CoinGecko free OHLC granularity is coarse (≈30-min candles on the
+  short view, 4-hourly/daily on longer ranges); the exact 1m/5m/15m candles only
+  appear if CryptoCompare is reachable. Candles WILL show either way.
+
+HONEST LIMITS:
+- Still couldn't browser-test here. If even CoinGecko were blocked on his
+  network, the chart would show "couldn't load" — but CoinGecko is clearly
+  reachable (price/coin list load), so candles should now appear.
+- Live order book + trade tape remain Binance-only (notice shown when blocked).
+
+===========================================
 DATE: 6/19/2026 (Session 11 — chart works when Binance is blocked)
 -------------------------------------------
 PROBLEM (from Nimith's screenshot):
