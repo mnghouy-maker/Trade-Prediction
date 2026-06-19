@@ -1,4 +1,44 @@
 ===========================================
+DATE: 6/19/2026 (Session 11 — chart works when Binance is blocked)
+-------------------------------------------
+PROBLEM (from Nimith's screenshot):
+- On his network Binance is blocked. The Binance WebSocket never connected, so
+  the chart was empty, the order book/trades were stuck "Connecting…", and the
+  "Live feed dropped" note covered the whole chart. 24h high/low/vol were "--".
+
+FIX:
+- Chart data no longer comes from Binance. binance-live.js now sources candles
+  from CryptoCompare (histominute/histohour/histoday, matching the 1m..1D
+  buttons), CORS-friendly and NOT blocked (same host as our news feed), with
+  CoinGecko OHLC as a fallback. So candlesticks always render.
+- Header 24h stats (price/change/high/low/vol) now fill from a CryptoCompare
+  poll (pricemultifull) every 12s when Binance's ticker isn't delivering — so
+  they're no longer stuck at "--". The forming candle is also refreshed on that
+  poll. Binance's WS, when reachable, still takes over (fresher) — gated by
+  lastTickerTs / lastKlineTs so the two sources don't fight.
+- Order book + recent trades are Binance-WS-only (no free CORS alternative). If
+  Binance is unreachable they now show a clear notice ("…comes from Binance,
+  which looks blocked on this network…") instead of an endless "Connecting…",
+  and they NO LONGER cover the chart. New .bx-unavail style for that note.
+- Paper trading marks now feed from whichever price source is live, so it works
+  even when Binance is blocked.
+- Entry/Stop/TP overlay + interval switcher + trades-locked-to-10 all retained.
+  Cache-busters v16 -> v17.
+
+DECISIONS MADE:
+- Decoupled the chart entirely from Binance; treat Binance as the preferred
+  source for order book/trades only. CryptoCompare is the primary chart source
+  because it's reachable where Binance isn't and gives true 1m/5m/15m/1h/4h/1D
+  candles.
+
+HONEST LIMITS:
+- Live order book + trade tape still need Binance; on a Binance-blocked network
+  those two panels show the notice (no free real-time CORS alternative exists).
+  Everything else — chart, price, 24h stats, signal, paper trading — works.
+- Couldn't browser-test in the sandbox; needs an in-browser look on Nimith's
+  network to confirm the candles now load.
+
+===========================================
 DATE: 6/19/2026 (Session 10 — buy/sell levels on chart + trades capped)
 -------------------------------------------
 DONE TODAY:

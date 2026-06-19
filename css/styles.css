@@ -1108,6 +1108,7 @@ body.locked { overflow: hidden; }
 }
 .bx-book-last { font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; }
 .bx-book-spread { font-size: 11px; color: var(--text-faint); }
+.bx-unavail { font-size: 12px; color: var(--text-faint); line-height: 1.5; padding: 10px 2px; }
 .bx-trade { display: flex; justify-content: space-between; padding: 1px 6px; line-height: 1.75; }
 .bx-trade span:nth-child(2) { flex: 1; text-align: center; color: var(--text-dim); }
 .bx-trade span:last-child { color: var(--text-faint); text-align: right; }
