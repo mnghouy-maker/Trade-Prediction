@@ -160,7 +160,7 @@ CP.api = (function () {
       return U.fetchJSON(cfg.api.news).then(function (d) {
         var items = (d.Data || []).slice(0, 18).map(function (n) {
           return { title: n.title, url: n.url, source: n.source_info ? n.source_info.name : n.source,
-            ts: n.published_on * 1000, categories: n.categories };
+            ts: n.published_on * 1000, categories: n.categories, body: n.body || "", image: n.imageurl || "" };
         });
         return { live: true, items: items };
       });

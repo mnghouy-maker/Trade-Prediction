@@ -76,7 +76,11 @@
       CP.state.coinCache.ethereum = { tech: d.tech.ethereum, chart: d.charts.ethereum };
 
       paint(d, result);
-      selectCoin(CP.state.selectedCoin, true);
+      // First load wires up the selected coin (chart, sockets, labels). Later
+      // refreshes only update the numbers/signal IN PLACE — no socket reset, no
+      // calculator changes, no scroll jump — so the page never "resets" on you.
+      if (!CP.state.coinInit) { CP.state.coinInit = true; selectCoin(CP.state.selectedCoin, true); }
+      else refreshSelectedCoin();
 
       // alerts + history use a flat snapshot
       CP.alerts.evaluate({ simple: d.simple, tech: d.tech, fearGreed: d.fearGreed, result: result, sentiment: d.sentiment });
@@ -91,22 +95,18 @@
       tickStatus();
   }
 
-  // Ticks every second so the clock is always live and "updated Xs ago" counts up.
+  // Ticks every second so the clock stays live. No "updated Xs ago" / refresh —
+  // the data updates in place (prices stream live), so the page never resets.
   function tickStatus() {
     var dot = U.el("liveDot");
     if (!dot) return;
     var live = CP.state.live;
     dot.className = "live-dot " + (live ? "live" : "demo");
     dot.title = live ? "Live market data" : "Connecting to live data…";
-    var now = new Date();
-    var label;
-    if (!CP.state.lastUpdate) {
-      label = "Connecting…";
-    } else {
-      var ago = Math.max(0, Math.round((Date.now() - CP.state.lastUpdate) / 1000));
-      label = (live ? "Live" : "Reconnecting") + " · " + now.toLocaleTimeString() + " · updated " + ago + "s ago";
-    }
-    U.el("lastUpdated").textContent = label;
+    var lbl = U.el("lastUpdated");
+    if (!lbl) return;
+    if (!CP.state.lastUpdate) lbl.textContent = "Connecting…";
+    else lbl.textContent = (live ? "Live" : "Connecting") + " · " + new Date().toLocaleTimeString();
   }
 
   // 1-second live price refresh straight from Binance — keeps displayed prices
@@ -155,10 +155,43 @@
     CP.render.renderOverview(d, result);
     CP.render.renderFearBanner(d.sentiment);
     CP.render.renderAI(result, d);
-    CP.render.renderNews(d.sentiment);
+    CP.render.renderNews(accumulateNews(d.sentiment.items));
     CP.render.renderSentiment(d.sentiment, d.trending);
     CP.render.renderWhales(d.whales);
     CP.render.renderCalendar(computeEvents());
+  }
+
+  // News accumulates: genuinely new headlines go on TOP, old ones stay so they
+  // can be scrolled and re-read. Deduped by link/title, capped so it can't grow
+  // forever. (The renderer keeps the reading position when new items are added.)
+  function accumulateNews(items) {
+    var list = CP.state.newsItems || [];
+    var seen = {};
+    list.forEach(function (n) { seen[n.url || n.title] = true; });
+    var fresh = (items || []).filter(function (n) {
+      var k = n.url || n.title;
+      if (seen[k]) return false;
+      seen[k] = true;
+      return true;
+    });
+    list = fresh.concat(list);
+    if (list.length > 60) list = list.slice(0, 60);
+    CP.state.newsItems = list;
+    return list;
+  }
+
+  // Light refresh of the selected coin (used on the 30s data cycle): refresh the
+  // numbers + Trade Signal in place. Deliberately does NOT touch the live socket
+  // (no reconnect/flicker) or the Profit Calculator.
+  function refreshSelectedCoin() {
+    var id = CP.state.selectedCoin;
+    var entry = CP.state.coinCache[id];
+    if (!entry || !entry.tech) return;
+    var meta = metaFor(id);
+    CP.render.renderTechnical({ symbol: meta.symbol, tech: entry.tech, change24h: meta.change24h, volume: meta.volume });
+    var plan = CP.trade.buildPlan(entry.tech, entry.chart.closes, CP.state.macro);
+    CP.state.currentPlan = plan;
+    renderTradeFromState();
   }
 
   // ---- Selected-coin: technical + trade plan + calculator priming ----
@@ -396,7 +429,21 @@
   // ---- Wiring ----
   function wire() {
     wireTabNav();
-    U.el("refreshBtn").addEventListener("click", function () { loadAll(); });
+
+    // News: click a headline to read its summary + source in a popup (so you can
+    // read it even when the original link won't open). Also wire the popup close.
+    var newsBodyEl = U.el("newsBody");
+    if (newsBodyEl) newsBodyEl.addEventListener("click", function (e) {
+      var item = e.target.closest(".news-item");
+      if (!item) return;
+      var key = item.getAttribute("data-key");
+      var n = (CP.state.newsItems || []).filter(function (x) { return (x.url || x.title) === key; })[0];
+      if (n) CP.render.openNewsModal(n);
+    });
+    var nmClose = U.el("newsModalClose"), nmBack = U.el("newsModalBackdrop");
+    if (nmClose) nmClose.addEventListener("click", CP.render.closeNewsModal);
+    if (nmBack) nmBack.addEventListener("click", CP.render.closeNewsModal);
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") CP.render.closeNewsModal(); });
 
     U.el("coinSwitch").addEventListener("click", function (e) {
       var btn = e.target.closest(".coin-btn");

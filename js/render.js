@@ -200,22 +200,62 @@ CP.render = (function () {
   }
 
   // ---------- 2. news ----------
-  function renderNews(sent) {
-    if (!sent.items.length) { U.el("newsBody").innerHTML = '<div class="skeleton">No headlines.</div>'; return; }
-    U.el("newsBody").innerHTML = sent.items.map(function (n) {
+  // items: accumulated, newest-first. Each item is clickable -> summary popup.
+  function renderNews(items) {
+    var box = U.el("newsBody");
+    if (!box) return;
+    if (!items || !items.length) {
+      box.innerHTML = '<div class="skeleton">No headlines.</div>';
+      box.removeAttribute("data-rendered");
+      return;
+    }
+    var wasRendered = box.getAttribute("data-rendered") === "1";
+    var prevTop = box.scrollTop, prevH = box.scrollHeight;
+    box.innerHTML = items.map(function (n) {
       var pillCls = n.label === "Bullish" ? "bull" : n.label === "Bearish" ? "bear" : "neutral";
-      var impCls = n.impact.toLowerCase();
-      var titleHtml = n.url && n.url !== "#"
-        ? '<a href="' + U.escapeHtml(n.url) + '" target="_blank" rel="noopener">' + U.escapeHtml(n.title) + "</a>"
-        : U.escapeHtml(n.title);
+      var impCls = (n.impact || "Low").toLowerCase();
       var fearTag = n.isFear ? '<span class="pill fear">Fear</span>' : "";
       var itemClass = "news-item" + (n.isFear ? " fear-item" : "");
-      return '<div class="' + itemClass + '"><div class="news-item-top">' +
-        '<span class="news-title">' + titleHtml + "</span>" +
-        '<span class="news-tags">' + fearTag + '<span class="pill ' + impCls + '">' + n.impact + "</span>" +
-        '<span class="pill ' + pillCls + '">' + n.label + "</span></span></div>" +
-        '<div class="news-meta"><span>' + U.escapeHtml(n.source || "") + "</span><span>·</span><span>" + U.timeAgo(n.ts) + "</span></div></div>";
+      return '<div class="' + itemClass + '" data-key="' + U.escapeHtml(n.url || n.title) + '" role="button" tabindex="0">' +
+        '<div class="news-item-top">' +
+        '<span class="news-title">' + U.escapeHtml(n.title) + "</span>" +
+        '<span class="news-tags">' + fearTag + '<span class="pill ' + impCls + '">' + (n.impact || "Low") + "</span>" +
+        '<span class="pill ' + pillCls + '">' + (n.label || "Neutral") + "</span></span></div>" +
+        '<div class="news-meta"><span>' + U.escapeHtml(n.source || "") + "</span><span>·</span><span>" + U.timeAgo(n.ts) +
+        '</span><span class="news-readmore">Read summary</span></div></div>';
     }).join("");
+    box.setAttribute("data-rendered", "1");
+    // Keep the reading position stable when new items are prepended on top.
+    if (wasRendered) box.scrollTop = prevTop + (box.scrollHeight - prevH);
+    else box.scrollTop = 0;
+  }
+
+  // ---------- news summary popup ----------
+  function openNewsModal(n) {
+    var modal = U.el("newsModal");
+    if (!modal || !n) return;
+    var pillCls = n.label === "Bullish" ? "bull" : n.label === "Bearish" ? "bear" : "neutral";
+    var impCls = (n.impact || "Low").toLowerCase();
+    var fearTag = n.isFear ? '<span class="pill fear">Fear</span>' : "";
+    U.el("newsModalTags").innerHTML = fearTag +
+      '<span class="pill ' + impCls + '">' + (n.impact || "Low") + " impact</span>" +
+      '<span class="pill ' + pillCls + '">' + (n.label || "Neutral") + "</span>";
+    U.el("newsModalTitle").textContent = n.title || "";
+    U.el("newsModalMeta").textContent = (n.source || "Unknown source") + (n.ts ? " · " + U.timeAgo(n.ts) : "");
+    var body = (n.body && n.body.trim())
+      ? n.body
+      : "No summary was provided for this headline. Use the source link below to read the full article.";
+    U.el("newsModalBody").textContent = body;
+    var link = U.el("newsModalLink");
+    if (link) {
+      if (n.url && n.url !== "#") { link.href = n.url; link.style.display = ""; }
+      else link.style.display = "none";
+    }
+    modal.classList.remove("hidden");
+  }
+  function closeNewsModal() {
+    var modal = U.el("newsModal");
+    if (modal) modal.classList.add("hidden");
   }
 
   // ---------- 4. sentiment ----------
@@ -550,5 +590,6 @@ CP.render = (function () {
     renderCalendar: renderCalendar, renderAlerts: renderAlerts, renderHistory: renderHistory,
     renderBacktest: renderBacktest, renderScreener: renderScreener, renderTrade: renderTrade,
     renderCalc: renderCalc, renderCoinDetail: renderCoinDetail,
+    openNewsModal: openNewsModal, closeNewsModal: closeNewsModal,
   };
 })();

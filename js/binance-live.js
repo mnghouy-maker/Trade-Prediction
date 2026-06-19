@@ -30,10 +30,17 @@ CP.live = (function () {
 
   // Called whenever the selected coin changes (from app.selectCoin).
   function setSymbol(coinId, meta) {
+    var prevSym = st.binSym, sameCoin = coinId === st.coinId;
     st.coinId = coinId;
     st.meta = meta || null;
     st.binSym = CP.api.binanceSymbol(coinId); // "BTCUSDT" or null
     paintHeaderStatic();
+    // Same symbol already set — just refresh the header/paper price; do NOT tear
+    // down and reconnect the socket (that would flicker the book/trades).
+    if (sameCoin && st.binSym && st.binSym === prevSym) {
+      CP.paper.setContext(st.binSym, meta ? meta.symbol : st.binSym, meta ? meta.price : 0);
+      return;
+    }
     if (st.binSym) {
       hideNote();
       CP.paper.setContext(st.binSym, meta ? meta.symbol : st.binSym, meta ? meta.price : 0);

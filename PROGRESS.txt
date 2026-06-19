@@ -1,4 +1,43 @@
 ===========================================
+DATE: 6/19/2026 (Session 9 — live UX fixes from Nimith's feedback)
+-------------------------------------------
+DONE TODAY (after deploying phases 1-3 to the live link):
+- Removed the "updated Xs ago" text and the Refresh button from the top bar.
+  Status now just shows "Live · <clock>".
+- Stopped the page resetting on the 30s cycle:
+  * binance-live.js setSymbol() no longer tears down + reconnects the WebSocket
+    when the coin hasn't changed (was flickering the order book and resetting the
+    Trade tab every 30s). The live numbers keep streaming in place.
+  * The 30s data refresh now does a LIGHT in-place update (refreshSelectedCoin):
+    updates the numbers + Trade Signal only. It does NOT reconnect the socket,
+    does NOT re-point the chart, and does NOT touch the Profit Calculator. Full
+    setup still runs once on first load and whenever the user changes coin.
+- News feed: new headlines now ACCUMULATE on top of old ones (deduped, capped at
+  60) instead of wiping the list each refresh; the renderer keeps the reading
+  position when items are added on top, so scrolling/reading isn't interrupted.
+- News click-to-read: clicking a headline opens a popup with the article SUMMARY
+  + source + impact/sentiment tags and a link to the original — so it's readable
+  even when the real link won't open. Summary text comes from the CryptoCompare
+  feed's `body` (now passed through in api.js). Esc / backdrop / × close it.
+- Cache-busters v14 -> v15.
+
+DECISIONS MADE:
+- Kept the 30s background refresh (so news + signal stay fresh) but made it
+  non-disruptive rather than removing it. Live prices come from the 1s tick +
+  the Trade tab WebSocket, which update in place.
+- Left the Profit Calculator completely untouched on refresh (per Nimith).
+
+HONEST LIMITS:
+- Still can't browser-test in this sandbox; logic/syntax verified. The news
+  summary needs the CryptoCompare feed (the live source on the static site) —
+  headlines without a body show a "use the source link" note.
+
+STILL PENDING / NEXT TIME:
+- Nimith to confirm the live link feels stable now (no resetting) and the news
+  popup reads well.
+- Phase 3 backend still needs hosting to switch on the "vs expected" logic.
+
+===========================================
 DATE: 6/19/2026 (Session 8 — backend macro engine, phase 3)
 -------------------------------------------
 DONE TODAY:

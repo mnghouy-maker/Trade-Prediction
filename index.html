@@ -10,7 +10,7 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
   <link rel="preconnect" href="https://api.coingecko.com" />
   <link rel="preconnect" href="https://api.alternative.me" />
-  <link rel="stylesheet" href="css/styles.css?v=14" />
+  <link rel="stylesheet" href="css/styles.css?v=15" />
 </head>
 <body>
 
@@ -25,7 +25,7 @@
 
       <!-- Left: photo / brand panel -->
       <div class="login-aside">
-        <img class="login-aside-img" src="img/login-bg.jpg?v=14" alt="" onerror="this.remove()" />
+        <img class="login-aside-img" src="img/login-bg.jpg?v=15" alt="" onerror="this.remove()" />
         <svg class="login-aside-glyph" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none"
           stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
           <!-- Lucide: wallet -->
@@ -89,17 +89,6 @@
     <div class="topbar-right">
       <span id="liveDot" class="live-dot" title="Live data status"></span>
       <span id="lastUpdated" class="last-updated">Connecting…</span>
-      <button id="refreshBtn" class="btn btn-sm btn-icon">
-        <!-- Lucide: refresh-cw -->
-        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
-          stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
-          <path d="M21 3v5h-5"/>
-          <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
-          <path d="M8 16H3v5"/>
-        </svg>
-        Refresh
-      </button>
       <button id="logoutBtn" class="btn btn-sm btn-icon hidden">
         <!-- Lucide: log-out -->
         <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none"
@@ -572,24 +561,37 @@
     </p>
   </footer>
 
+  <!-- News summary popup — opens when a headline is clicked -->
+  <div id="newsModal" class="news-modal hidden">
+    <div class="news-modal-backdrop" id="newsModalBackdrop"></div>
+    <div class="news-modal-card" role="dialog" aria-modal="true">
+      <button class="news-modal-close" id="newsModalClose" aria-label="Close">&times;</button>
+      <div class="news-modal-tags" id="newsModalTags"></div>
+      <h2 class="news-modal-title" id="newsModalTitle"></h2>
+      <div class="news-modal-meta" id="newsModalMeta"></div>
+      <div class="news-modal-body" id="newsModalBody"></div>
+      <a class="news-modal-link" id="newsModalLink" href="#" target="_blank" rel="noopener">Open original article ↗</a>
+    </div>
+  </div>
+
   <div id="toasts" class="toasts"></div>
 
-  <script src="js/config.js?v=14"></script>
-  <script src="js/util.js?v=14"></script>
-  <script src="js/indicators.js?v=14"></script>
-  <script src="js/api.js?v=14"></script>
-  <script src="js/sentiment.js?v=14"></script>
-  <script src="js/score.js?v=14"></script>
-  <script src="js/macro.js?v=14"></script>
-  <script src="js/alerts.js?v=14"></script>
-  <script src="js/history.js?v=14"></script>
-  <script src="js/backtest.js?v=14"></script>
-  <script src="js/markets.js?v=14"></script>
-  <script src="js/trade.js?v=14"></script>
-  <script src="js/render.js?v=14"></script>
-  <script src="js/paper.js?v=14"></script>
-  <script src="js/binance-live.js?v=14"></script>
-  <script src="js/app.js?v=14"></script>
-  <script src="js/auth.js?v=14"></script>
+  <script src="js/config.js?v=15"></script>
+  <script src="js/util.js?v=15"></script>
+  <script src="js/indicators.js?v=15"></script>
+  <script src="js/api.js?v=15"></script>
+  <script src="js/sentiment.js?v=15"></script>
+  <script src="js/score.js?v=15"></script>
+  <script src="js/macro.js?v=15"></script>
+  <script src="js/alerts.js?v=15"></script>
+  <script src="js/history.js?v=15"></script>
+  <script src="js/backtest.js?v=15"></script>
+  <script src="js/markets.js?v=15"></script>
+  <script src="js/trade.js?v=15"></script>
+  <script src="js/render.js?v=15"></script>
+  <script src="js/paper.js?v=15"></script>
+  <script src="js/binance-live.js?v=15"></script>
+  <script src="js/app.js?v=15"></script>
+  <script src="js/auth.js?v=15"></script>
 </body>
 </html>
