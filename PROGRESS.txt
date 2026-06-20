@@ -1,4 +1,25 @@
 ===========================================
+DATE: 6/19/2026 (Session 14 — revert chart back to Binance, per Nimith)
+-------------------------------------------
+DONE TODAY:
+- Per Nimith ("no need to change, just make it back to Binance"), reverted the
+  chart's data source to BINANCE: candles from Binance klines REST (history) +
+  the @kline live stream, order book + trades + 24h header from the Binance
+  WebSocket. Removed the CoinGecko/CryptoCompare/market_chart backup layers and
+  the price poll.
+- KEPT my self-contained <canvas> renderer (so there's still no external chart
+  library/CDN to get blocked) and KEPT the entry/stop/TP level overlay, the
+  interval switcher, and trades-locked-to-10.
+- If Binance is unreachable on a given network, the chart + book + trades show a
+  clear notice (same as before). Cache-busters v19 -> v20.
+
+DECISIONS MADE:
+- Binance is the single chart source again (Nimith's call). Trade-off he's
+  accepting: on a network that blocks Binance the chart won't load. The only way
+  to make Binance work through a block is the backend proxy (phase 3 territory)
+  — offered for later.
+
+===========================================
 DATE: 6/19/2026 (Session 13 — chart: use data the app already has)
 -------------------------------------------
 PROBLEM (3rd screenshot):
