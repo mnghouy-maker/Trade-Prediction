@@ -479,14 +479,34 @@
       tradeSearchEl.addEventListener("input", function (e) {
         var q = (e.target.value || "").toLowerCase().trim();
         if (!q || !CP.state.markets.length) { tradeSuggestEl.innerHTML = ""; return; }
+        function rankOf(c) {
+          var s = c.symbol.toLowerCase(), nm = c.name.toLowerCase();
+          if (s === q) return 0;
+          if (s.indexOf(q) === 0) return 1;
+          if (nm.indexOf(q) === 0) return 2;
+          if (s.indexOf(q) !== -1) return 3;
+          return 4;
+        }
         var matches = CP.state.markets.filter(function (c) {
           return c.name.toLowerCase().indexOf(q) !== -1 || c.symbol.toLowerCase().indexOf(q) !== -1;
-        }).slice(0, 6);
+        }).sort(function (a, b) {
+          var ra = rankOf(a), rb = rankOf(b);
+          if (ra !== rb) return ra - rb;
+          return (a.rank || 9999) - (b.rank || 9999);
+        }).slice(0, 8);
         if (!matches.length) { tradeSuggestEl.innerHTML = '<div class="coin-suggest-none">No coins found.</div>'; return; }
         tradeSuggestEl.innerHTML = matches.map(function (c) {
-          var img = c.image ? '<img src="' + U.escapeHtml(c.image) + '" width="20" height="20" style="border-radius:50%;margin-right:7px;vertical-align:middle" />' : "";
+          var img = c.image
+            ? '<img class="cs-img" src="' + U.escapeHtml(c.image) + '" alt="" />'
+            : '<span class="cs-img cs-img-ph"></span>';
+          var chg = c.change24h || 0;
+          var px = c.price != null
+            ? '<span class="cs-px"><span class="cs-price">' + U.fmtUSD(c.price, c.price < 1 ? 4 : 2) + '</span>' +
+              '<span class="' + U.pctClass(chg) + '">' + U.fmtPct(chg, true) + '</span></span>'
+            : "";
           return '<div class="coin-suggest-item" data-coin="' + U.escapeHtml(c.id) + '">' +
-            img + '<strong>' + U.escapeHtml(c.symbol) + '</strong> <span>' + U.escapeHtml(c.name) + '</span></div>';
+            img + '<span class="cs-id"><strong>' + U.escapeHtml(c.symbol) + '</strong>' +
+            '<span class="cs-name">' + U.escapeHtml(c.name) + '</span></span>' + px + '</div>';
         }).join("");
       });
       tradeSuggestEl.addEventListener("click", function (e) {

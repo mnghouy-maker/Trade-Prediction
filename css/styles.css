@@ -1023,7 +1023,7 @@ body.locked { overflow: hidden; }
    ============================================================ */
 .bx-topbar {
   display: flex; align-items: center; gap: 22px; flex-wrap: wrap;
-  position: relative; padding: 14px 18px;
+  position: relative; padding: 14px 18px; overflow: visible; z-index: 20;
 }
 .bx-sym { display: flex; align-items: center; gap: 11px; }
 .bx-coin-icon { width: 26px; height: 26px; display: inline-flex; }
@@ -1045,19 +1045,34 @@ body.locked { overflow: hidden; }
 .bx-search { margin-left: auto; position: relative; min-width: 180px; }
 .bx-search input {
   width: 100%; background: var(--bg-elev2); border: 1px solid var(--border);
-  color: var(--text); border-radius: 9px; padding: 9px 12px; font-family: inherit; font-size: 13px;
+  color: var(--text); border-radius: 9px; padding: 9px 12px 9px 34px; font-family: inherit; font-size: 13px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%238b9bb0' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Ccircle cx='11' cy='11' r='8'/%3E%3Cline x1='21' y1='21' x2='16.65' y2='16.65'/%3E%3C/svg%3E");
+  background-repeat: no-repeat; background-position: 11px center; background-size: 15px;
 }
-.bx-search input:focus { outline: none; border-color: var(--accent); }
+.bx-search input:focus { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px rgba(45,127,249,0.12); }
+
 .coin-suggest-list {
-  position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 30;
-  background: var(--bg-elev2); border: 1px solid var(--border); border-radius: 10px;
-  overflow: hidden; box-shadow: 0 12px 30px rgba(0,0,0,0.4);
+  position: absolute; top: calc(100% + 6px); left: 0; right: 0; z-index: 40;
+  max-height: 380px; overflow-y: auto;
+  background: var(--bg-elev2); border: 1px solid var(--border); border-radius: 11px;
+  box-shadow: 0 16px 40px rgba(0,0,0,0.5); padding: 4px;
 }
 .coin-suggest-list:empty { display: none; }
-.coin-suggest-item { display: flex; align-items: center; gap: 4px; padding: 9px 12px; cursor: pointer; font-size: 13px; }
-.coin-suggest-item:hover { background: rgba(255,255,255,0.05); }
-.coin-suggest-item span { color: var(--text-dim); }
-.coin-suggest-none { padding: 10px 12px; color: var(--text-faint); font-size: 12px; }
+.coin-suggest-item {
+  display: flex; align-items: center; gap: 10px; padding: 9px 10px; cursor: pointer;
+  border-radius: 8px; transition: background 0.12s;
+}
+.coin-suggest-item:hover { background: rgba(255,255,255,0.06); }
+.cs-img { width: 24px; height: 24px; border-radius: 50%; flex-shrink: 0; }
+.cs-img-ph { background: var(--border); }
+.cs-id { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; flex: 1; }
+.cs-id strong { font-size: 13px; font-weight: 700; color: var(--text); }
+.cs-name { font-size: 11px; color: var(--text-dim); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cs-px { margin-left: auto; text-align: right; display: flex; flex-direction: column; line-height: 1.25; flex-shrink: 0; font-variant-numeric: tabular-nums; }
+.cs-price { font-size: 12.5px; font-weight: 600; color: var(--text); }
+.cs-px .up { color: var(--bull); font-size: 11px; }
+.cs-px .down { color: var(--bear); font-size: 11px; }
+.coin-suggest-none { padding: 12px; color: var(--text-faint); font-size: 12px; text-align: center; }
 
 /* main grid: chart + side column */
 .bx-main { display: grid; grid-template-columns: 1fr 330px; gap: 14px; margin-bottom: 14px; }

@@ -1,4 +1,22 @@
 ===========================================
+DATE: 6/20/2026 (Session 18 — fix + upgrade the Trade search bar)
+-------------------------------------------
+PROBLEM: the coin-search dropdown on the Trade tab was clipped — only a sliver
+showed under the input, so you couldn't read the coin name. Cause: the header
+card (.bx-topbar, a .card) had overflow:hidden, clipping the absolutely-
+positioned suggestion list.
+
+DONE:
+- .bx-topbar: overflow visible + z-index 20 so the dropdown overflows the card
+  and sits above the chart/order book.
+- Rebuilt the suggestions into a proper list: coin icon, SYMBOL + full name
+  (name ellipsis-truncated), and the live price + 24h % on the right. Smarter
+  ranking (exact symbol > symbol-starts > name-starts > contains, then market-
+  cap rank), up to 8 results, scrollable, rounded with a shadow and row hover.
+- Added a magnifier icon inside the search input + a focus ring.
+- Cache-busters v23 -> v24.
+
+===========================================
 DATE: 6/20/2026 (Session 17 — real interactive chart: zoom/pan like Binance)
 -------------------------------------------
 ASK: "make it exactly like Binance chart that allows me to zoom in and out."
