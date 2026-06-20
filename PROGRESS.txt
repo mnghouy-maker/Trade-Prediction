@@ -1,4 +1,23 @@
 ===========================================
+DATE: 6/20/2026 (Session 19 — TradingView-style chart: MAs + volume + legend)
+-------------------------------------------
+ASK: best chart like TradingView, with clear long/short entry + close.
+
+DONE (on the Lightweight Charts chart):
+- Added moving averages MA7 (gold), MA25 (pink), MA99 (purple) overlaid on the
+  candles, computed from closes, updating live.
+- Added a VOLUME histogram in a band at the bottom (green/red per candle), from
+  Binance kline volume. Candle scale margins adjusted to make room.
+- Added a TradingView-style LEGEND overlaid top-left: O/H/L/C of the
+  hovered/last candle (green/red) + MA7/MA25/MA99 values, updating on crosshair
+  move (subscribeCrosshairMove).
+- Kept the entry/stop/TP price lines as the clear "enter here / close here"
+  markers (LONG/SHORT entry white, Stop red, TP1-3 green).
+- Volume carried in candle objects from Binance klines + @kline; MAs/volume only
+  in lib mode (canvas fallback still shows candles + legend numbers).
+- Cache-busters v24 -> v25.
+
+===========================================
 DATE: 6/20/2026 (Session 18 — fix + upgrade the Trade search bar)
 -------------------------------------------
 PROBLEM: the coin-search dropdown on the Trade tab was clipped — only a sliver

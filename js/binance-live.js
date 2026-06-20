@@ -26,7 +26,7 @@ CP.live = (function () {
   var st = {
     active: false, coinId: null, binSym: null, meta: null, interval: "15m",
     ws: null, gen: 0, poll: null, backup: false,
-    mode: null, chart: null, series: null, priceLines: [], canvas: null, ctx: null,
+    mode: null, chart: null, series: null, priceLines: [], maSeries: {}, volSeries: null, canvas: null, ctx: null,
     candles: [], levels: [], resizeWired: false, building: false,
     book: null, trades: [], bookDirty: false, tradesDirty: false, rafPending: false,
     failCount: 0,
@@ -109,13 +109,20 @@ CP.live = (function () {
       layout: { background: { type: "solid", color: "#0d111c" }, textColor: "#8b9bb0" },
       grid: { vertLines: { color: "rgba(255,255,255,0.04)" }, horzLines: { color: "rgba(255,255,255,0.04)" } },
       timeScale: { timeVisible: true, secondsVisible: false, borderColor: "rgba(255,255,255,0.10)" },
-      rightPriceScale: { borderColor: "rgba(255,255,255,0.10)" },
+      rightPriceScale: { borderColor: "rgba(255,255,255,0.10)", scaleMargins: { top: 0.06, bottom: 0.26 } },
       crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 0 },
     });
     st.series = st.chart.addCandlestickSeries({
       upColor: "#16c784", downColor: "#f03542", borderVisible: false,
       wickUpColor: "#16c784", wickDownColor: "#f03542",
     });
+    // Moving averages (like Binance: MA7 gold, MA25 pink, MA99 purple).
+    function ma(color) { return st.chart.addLineSeries({ color: color, lineWidth: 1, priceLineVisible: false, lastValueVisible: false, crosshairMarkerVisible: false }); }
+    st.maSeries = { ma7: ma("#f0b90b"), ma25: ma("#e542a3"), ma99: ma("#8a7df7") };
+    // Volume histogram in a band at the bottom.
+    st.volSeries = st.chart.addHistogramSeries({ priceFormat: { type: "volume" }, priceScaleId: "vol" });
+    st.chart.priceScale("vol").applyOptions({ scaleMargins: { top: 0.8, bottom: 0 } });
+    st.chart.subscribeCrosshairMove(function (param) { updateLegend(param); });
     st.mode = "lib";
   }
   function buildCanvas(host) {
@@ -135,8 +142,10 @@ CP.live = (function () {
     st.candles = data || [];
     if (st.mode === "lib" && st.series) {
       try { st.series.setData(st.candles); if (refit && st.candles.length) st.chart.timeScale().fitContent(); } catch (e) {}
+      setOverlays();
     } else draw();
     if (st.candles.length) { hideNote(); if (st.backup) setHiLoFromCandles(); }
+    updateLegend(null);
     setLevels(CP.state && CP.state.currentPlan);
   }
   function updateLastCandle(c) {
@@ -144,7 +153,57 @@ CP.live = (function () {
     if (last && c.time === last.time) st.candles[st.candles.length - 1] = c;
     else if (!last || c.time > last.time) { st.candles.push(c); if (st.candles.length > 500) st.candles.shift(); }
     else return;
-    if (st.mode === "lib" && st.series) { try { st.series.update(c); } catch (e) {} } else draw();
+    if (st.mode === "lib" && st.series) { try { st.series.update(c); } catch (e) {} updateOverlaysLast(); } else draw();
+    updateLegend(null);
+  }
+
+  // ---- moving averages + volume + legend (TradingView-style) ----
+  function smaData(period) {
+    var cs = st.candles, out = [];
+    for (var i = period - 1; i < cs.length; i++) {
+      var sum = 0; for (var j = i - period + 1; j <= i; j++) sum += cs[j].close;
+      out.push({ time: cs[i].time, value: sum / period });
+    }
+    return out;
+  }
+  function maAt(period, idx) {
+    if (idx < period - 1) return null;
+    var sum = 0; for (var j = idx - period + 1; j <= idx; j++) sum += st.candles[j].close;
+    return sum / period;
+  }
+  function volColor(k) { return k.close >= k.open ? "rgba(22,199,132,0.45)" : "rgba(240,53,66,0.45)"; }
+  function setOverlays() {
+    if (st.mode !== "lib") return;
+    if (st.maSeries.ma7) st.maSeries.ma7.setData(smaData(7));
+    if (st.maSeries.ma25) st.maSeries.ma25.setData(smaData(25));
+    if (st.maSeries.ma99) st.maSeries.ma99.setData(smaData(99));
+    if (st.volSeries) {
+      var cs = st.candles, hasVol = cs.length && cs[cs.length - 1].volume != null;
+      st.volSeries.setData(hasVol ? cs.map(function (k) { return { time: k.time, value: k.volume || 0, color: volColor(k) }; }) : []);
+    }
+  }
+  function updateOverlaysLast() {
+    if (st.mode !== "lib") return;
+    var i = st.candles.length - 1; if (i < 0) return;
+    var t = st.candles[i].time;
+    if (st.maSeries.ma7 && i >= 6) st.maSeries.ma7.update({ time: t, value: maAt(7, i) });
+    if (st.maSeries.ma25 && i >= 24) st.maSeries.ma25.update({ time: t, value: maAt(25, i) });
+    if (st.maSeries.ma99 && i >= 98) st.maSeries.ma99.update({ time: t, value: maAt(99, i) });
+    if (st.volSeries && st.candles[i].volume != null) st.volSeries.update({ time: t, value: st.candles[i].volume || 0, color: volColor(st.candles[i]) });
+  }
+  function legNum(v) { return v == null ? "–" : (v < 1 ? (+v.toPrecision(5)).toString() : (+v.toFixed(2)).toString()); }
+  function updateLegend(param) {
+    var lg = el("bxLegend"); if (!lg || !st.candles.length) return;
+    var idx = st.candles.length - 1;
+    if (param && param.time != null) {
+      for (var i = st.candles.length - 1; i >= 0; i--) { if (st.candles[i].time === param.time) { idx = i; break; } }
+    }
+    var k = st.candles[idx]; if (!k) return;
+    lg.innerHTML =
+      '<span class="lg-ohlc ' + (k.close >= k.open ? "up" : "down") + '">O ' + legNum(k.open) + " H " + legNum(k.high) + " L " + legNum(k.low) + " C " + legNum(k.close) + "</span>" +
+      '<span style="color:#f0b90b">MA7 ' + legNum(maAt(7, idx)) + "</span>" +
+      '<span style="color:#e542a3">MA25 ' + legNum(maAt(25, idx)) + "</span>" +
+      '<span style="color:#8a7df7">MA99 ' + legNum(maAt(99, idx)) + "</span>";
   }
 
   // ---------- data: Binance first, CoinGecko fallback ----------
@@ -156,7 +215,7 @@ CP.live = (function () {
       if (sym !== st.binSym || iv !== st.interval) return;
       if (!k || !k.length) throw new Error("empty");
       st.backup = false;
-      renderCandles(k.map(function (c) { return { time: Math.floor(c[0] / 1000), open: +c[1], high: +c[2], low: +c[3], close: +c[4] }; }), true);
+      renderCandles(k.map(function (c) { return { time: Math.floor(c[0] / 1000), open: +c[1], high: +c[2], low: +c[3], close: +c[4], volume: +c[5] }; }), true);
     }).catch(function () {
       if (sym === st.binSym && iv === st.interval) loadBackupChart(sym, iv);
     });
@@ -362,7 +421,7 @@ CP.live = (function () {
   }
   function onKline(k) {
     if (!st.mode || !k || st.backup) return;
-    updateLastCandle({ time: Math.floor(k.t / 1000), open: +k.o, high: +k.h, low: +k.l, close: +k.c });
+    updateLastCandle({ time: Math.floor(k.t / 1000), open: +k.o, high: +k.h, low: +k.l, close: +k.c, volume: +k.v });
   }
   function onTrade(d) {
     st.trades.unshift({ p: +d.p, q: +d.q, m: d.m, t: d.T });
