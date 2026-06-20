@@ -91,9 +91,11 @@ CP.live = (function () {
     var candles = st.candles || [];
     if (!candles.length) return;
     var padL = 8, padR = 70, padT = 10, padB = 22, plotW = W - padL - padR, plotH = H - padT - padB;
+    // Scale the y-axis to the CANDLES only (like Binance). Signal levels that
+    // fall outside this range get pinned to the top/bottom edge below, so a
+    // far-away stop/target can't squash the candles into a flat line.
     var lo = Infinity, hi = -Infinity;
     candles.forEach(function (k) { if (k.low < lo) lo = k.low; if (k.high > hi) hi = k.high; });
-    (st.levels || []).forEach(function (l) { if (l.price < lo) lo = l.price; if (l.price > hi) hi = l.price; });
     if (!(hi > lo)) { hi = lo * 1.01 || 1; lo = lo * 0.99 || 0; }
     var pad = (hi - lo) * 0.08; hi += pad; lo -= pad;
     function y(p) { return padT + (1 - (p - lo) / (hi - lo)) * plotH; }
@@ -112,10 +114,17 @@ CP.live = (function () {
       ctx.fillRect(x - bw / 2, top, bw, bh);
     });
     (st.levels || []).forEach(function (l) {
-      var yy = y(l.price);
-      ctx.strokeStyle = l.color; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.2;
-      ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(padL + plotW, yy); ctx.stroke(); ctx.setLineDash([]);
-      ctx.fillStyle = l.color; ctx.textAlign = "right"; ctx.fillText(l.title + " " + fmtP(l.price), padL + plotW, yy - 6);
+      ctx.fillStyle = l.color; ctx.textAlign = "right";
+      if (l.price <= hi && l.price >= lo) {
+        var yy = y(l.price);
+        ctx.strokeStyle = l.color; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(padL + plotW, yy); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillText(l.title + " " + fmtP(l.price), padL + plotW, yy - 6);
+      } else {
+        // off-screen level — pin it to the top/bottom edge with an arrow.
+        var atTop = l.price > hi;
+        ctx.fillText((atTop ? "▲ " : "▼ ") + l.title + " " + fmtP(l.price), padL + plotW, atTop ? padT + 7 : padT + plotH - 5);
+      }
     });
     ctx.fillStyle = "#5b6b80"; ctx.textAlign = "center";
     var labelN = Math.min(6, n);

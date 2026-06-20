@@ -1,4 +1,24 @@
 ===========================================
+DATE: 6/20/2026 (Session 16 — fix squashed candles, scale like Binance)
+-------------------------------------------
+PROBLEM (screenshot): candles were drawn as a flat thin line. Cause: the chart's
+y-axis included the signal LEVELS in its range. For BTC the stop (~77,399) and
+TP2 (~21,317) sit far from the ~63,379 price (the signal uses big daily-vol /
+R-multiple distances), so the axis spanned 16,831–81,885 and crushed the candles.
+
+FIX:
+- draw() now scales the y-axis to the CANDLES only (+8% padding), like Binance,
+  so the candlesticks fill the panel and are readable.
+- Signal level lines: drawn normally when in view; when off-screen (e.g. a far
+  stop/target) they're pinned to the top/bottom edge with an ▲/▼ arrow + price,
+  so you still see them without squashing the chart.
+- Cache-busters v21 -> v22.
+
+NOTE: the wide level distances come from the signal's volatility/R-multiple math
+(buildPlan in trade.js); left as-is since Nimith only asked about the candles.
+Could tighten TP/stop distances later if he wants them closer to price.
+
+===========================================
 DATE: 6/19/2026 (Session 15 — Binance-first chart WITH backup)
 -------------------------------------------
 CLARIFICATION FROM NIMITH:
