@@ -501,7 +501,7 @@
             : '<span class="cs-img cs-img-ph"></span>';
           var chg = c.change24h || 0;
           var px = c.price != null
-            ? '<span class="cs-px"><span class="cs-price">' + U.fmtUSD(c.price, c.price < 1 ? 4 : 2) + '</span>' +
+            ? '<span class="cs-px"><span class="cs-price">' + U.fmtUSD(c.price, U.priceDp(c.price)) + '</span>' +
               '<span class="' + U.pctClass(chg) + '">' + U.fmtPct(chg, true) + '</span></span>'
             : "";
           return '<div class="coin-suggest-item" data-coin="' + U.escapeHtml(c.id) + '">' +

@@ -141,12 +141,21 @@ CP.live = (function () {
   function renderCandles(data, refit) {
     st.candles = data || [];
     if (st.mode === "lib" && st.series) {
+      applyPriceFormat();
       try { st.series.setData(st.candles); if (refit && st.candles.length) st.chart.timeScale().fitContent(); } catch (e) {}
       setOverlays();
     } else draw();
     if (st.candles.length) { hideNote(); if (st.backup) setHiLoFromCandles(); }
     updateLegend(null);
     setLevels(CP.state && CP.state.currentPlan);
+  }
+  // Make the chart's axis + price-line labels show the coin's full precision
+  // (so a sub-$1 coin shows e.g. 0.083375, not 0.08).
+  function applyPriceFormat() {
+    if (st.mode !== "lib" || !st.series) return;
+    var ref = st.candles.length ? st.candles[st.candles.length - 1].close : (st.meta && st.meta.price) || 1;
+    var dp = U.priceDp(ref);
+    try { st.series.applyOptions({ priceFormat: { type: "price", precision: dp, minMove: Math.pow(10, -dp) } }); } catch (e) {}
   }
   function updateLastCandle(c) {
     var last = st.candles[st.candles.length - 1];
@@ -191,7 +200,7 @@ CP.live = (function () {
     if (st.maSeries.ma99 && i >= 98) st.maSeries.ma99.update({ time: t, value: maAt(99, i) });
     if (st.volSeries && st.candles[i].volume != null) st.volSeries.update({ time: t, value: st.candles[i].volume || 0, color: volColor(st.candles[i]) });
   }
-  function legNum(v) { return v == null ? "–" : (v < 1 ? (+v.toPrecision(5)).toString() : (+v.toFixed(2)).toString()); }
+  function legNum(v) { return v == null ? "–" : (+v).toFixed(U.priceDp(v)); }
   function updateLegend(param) {
     var lg = el("bxLegend"); if (!lg || !st.candles.length) return;
     var idx = st.candles.length - 1;
@@ -264,7 +273,7 @@ CP.live = (function () {
     var cutoff = Math.floor(Date.now() / 1000) - 86400, hi = -Infinity, lo = Infinity;
     st.candles.forEach(function (k) { if (k.time >= cutoff) { if (k.high > hi) hi = k.high; if (k.low < lo) lo = k.low; } });
     if (!(hi > 0)) st.candles.forEach(function (k) { if (k.high > hi) hi = k.high; if (k.low < lo) lo = k.low; });
-    var dp = hi < 1 ? 4 : 2;
+    var dp = U.priceDp(hi);
     if (hi > 0) setText("bxHigh", U.fmtUSD(hi, dp));
     if (lo < Infinity) setText("bxLow", U.fmtUSD(lo, dp));
   }
@@ -275,7 +284,7 @@ CP.live = (function () {
       U.fetchJSON(CG + "/simple/price?ids=" + st.coinId + "&vs_currencies=usd", 6000).then(function (r) {
         var p = r && r[st.coinId] && r[st.coinId].usd;
         if (!(p > 0)) return;
-        setText("bxPrice", U.fmtUSD(p, p < 1 ? 4 : 2));
+        setText("bxPrice", U.fmtUSD(p, U.priceDp(p)));
         CP.paper.mark(st.binSym, p);
         if (st.candles.length) {
           var last = st.candles[st.candles.length - 1];
@@ -429,7 +438,7 @@ CP.live = (function () {
     st.tradesDirty = true; schedulePaint();
   }
   function onTicker(d) {
-    var price = +d.c, chg = +d.P, dp = price < 1 ? 4 : 2;
+    var price = +d.c, chg = +d.P, dp = U.priceDp(price);
     setText("bxPrice", U.fmtUSD(price, dp));
     var pr = el("bxPrice"); if (pr) pr.className = "bx-price " + (chg >= 0 ? "up" : "down");
     setText("bxChange", U.fmtPct(chg, true) + " (24h)");
@@ -439,7 +448,7 @@ CP.live = (function () {
     setText("bxVolBase", U.fmtCompact(+d.v).replace("$", ""));
     setText("bxVolQuote", U.fmtCompact(+d.q));
     CP.paper.mark(st.binSym, price);
-    var pp = el("paperPrice"); if (pp && !pp.value) pp.value = +price.toFixed(price < 1 ? 6 : 2);
+    var pp = el("paperPrice"); if (pp && !pp.value) pp.value = +price.toFixed(U.priceDp(price));
   }
 
   // ---------- render book + trades ----------
@@ -461,7 +470,7 @@ CP.live = (function () {
     var maxQ = 1; asks.concat(bids).forEach(function (r) { if (r.q > maxQ) maxQ = r.q; });
     var spread = (asks.length && bids.length) ? (asks[0].p - bids[0].p) : 0;
     var mid = (asks.length && bids.length) ? (asks[0].p + bids[0].p) / 2 : (asks[0] ? asks[0].p : bids[0].p);
-    var dp = mid < 1 ? 5 : 2;
+    var dp = U.priceDp(mid);
     box.innerHTML =
       '<div class="bx-book-head"><span>Price (USDT)</span><span>Size</span></div>' +
       '<div class="bx-book-asks">' + asks.slice().reverse().map(function (r) { return bookRow(r, "ask", maxQ, dp); }).join("") + "</div>" +
@@ -478,7 +487,7 @@ CP.live = (function () {
     var box = el("bxTrades"); if (!box) return;
     box.innerHTML = '<div class="bx-trades-head"><span>Price</span><span>Amount</span><span>Time</span></div>' +
       st.trades.slice(0, 10).map(function (t) {
-        var cls = t.m ? "down" : "up", dp = t.p < 1 ? 5 : 2;
+        var cls = t.m ? "down" : "up", dp = U.priceDp(t.p);
         return '<div class="bx-trade ' + cls + '"><span>' + U.fmtUSD(t.p, dp) + "</span><span>" + trim(t.q) +
           "</span><span>" + new Date(t.t).toLocaleTimeString() + "</span></div>";
       }).join("");
@@ -491,7 +500,7 @@ CP.live = (function () {
     setText("bxCoinFull", m.name || "");
     var ic = el("bxCoinIcon");
     if (ic) ic.innerHTML = m.image ? '<img src="' + U.escapeHtml(m.image) + '" width="26" height="26" style="border-radius:50%" />' : "";
-    if (m.price) setText("bxPrice", U.fmtUSD(m.price, m.price < 1 ? 4 : 2));
+    if (m.price) setText("bxPrice", U.fmtUSD(m.price, U.priceDp(m.price)));
     if (typeof m.change24h === "number") {
       setText("bxChange", U.fmtPct(m.change24h, true) + " (24h)");
       var ch = el("bxChange"); if (ch) ch.className = "bx-change " + (m.change24h >= 0 ? "up" : "down");

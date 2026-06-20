@@ -6,6 +6,21 @@ CP.util = (function () {
     return "$" + Number(n).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
   }
 
+  // Decimal places for a coin PRICE: 2 for >= $1, otherwise enough to keep
+  // ~5 significant figures and at least 5 decimals (e.g. 0.083375 -> 6).
+  function priceDp(n) {
+    var p = Math.abs(+n);
+    if (!(p > 0)) return 5;
+    if (p >= 1) return 2;
+    var lead = Math.floor(-Math.log10(p)); // leading zeros after the dot
+    return Math.min(8, Math.max(5, lead + 5));
+  }
+  function fmtPrice(n) {
+    if (n == null || isNaN(n)) return "—";
+    var d = priceDp(n);
+    return "$" + Number(n).toLocaleString("en-US", { minimumFractionDigits: d, maximumFractionDigits: d });
+  }
+
   function fmtCompact(n) {
     if (n == null || isNaN(n)) return "—";
     var abs = Math.abs(n);
@@ -54,6 +69,6 @@ CP.util = (function () {
 
   function clamp(n, lo, hi) { return Math.max(lo, Math.min(hi, n)); }
 
-  return { fmtUSD: fmtUSD, fmtCompact: fmtCompact, fmtPct: fmtPct, pctClass: pctClass,
+  return { fmtUSD: fmtUSD, fmtPrice: fmtPrice, priceDp: priceDp, fmtCompact: fmtCompact, fmtPct: fmtPct, pctClass: pctClass,
     el: el, timeAgo: timeAgo, escapeHtml: escapeHtml, fetchJSON: fetchJSON, clamp: clamp };
 })();

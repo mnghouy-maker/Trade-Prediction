@@ -154,7 +154,7 @@ CP.render = (function () {
     var change = info.change24h;
 
     var metrics = [
-      ["Price", U.fmtUSD(tech.price, tech.price < 1 ? 4 : 2)],
+      ["Price", U.fmtUSD(tech.price, U.priceDp(tech.price))],
       ["24h", '<span class="' + U.pctClass(change) + '">' + U.fmtPct(change, true) + "</span>"],
       ["Volume", U.fmtCompact(info.volume)],
       ["RSI (14)", tech.rsi != null ? tech.rsi.toFixed(1) : "—"],
@@ -171,7 +171,7 @@ CP.render = (function () {
     var barColor = ts.pct >= 60 ? "var(--bull)" : ts.pct <= 40 ? "var(--bear)" : "var(--neutral)";
 
     U.el("technicalBody").innerHTML =
-      '<div class="ta-price-row"><span class="ta-price">' + U.fmtUSD(tech.price, tech.price < 1 ? 4 : 2) + "</span>" +
+      '<div class="ta-price-row"><span class="ta-price">' + U.fmtUSD(tech.price, U.priceDp(tech.price)) + "</span>" +
         '<span class="ta-change ' + U.pctClass(change) + '">' + U.fmtPct(change, true) + " (24h)</span></div>" +
       '<div class="ta-metrics">' + metrics.map(function (m) {
         return '<div class="ta-metric"><div class="k">' + m[0] + '</div><div class="v">' + m[1] + "</div></div>";
@@ -411,7 +411,7 @@ CP.render = (function () {
         "<td>" + (c.rank || "") + "</td>" +
         '<td class="coin-cell">' + img + "<span><strong>" + U.escapeHtml(c.symbol) + "</strong> " +
           '<span class="coin-name">' + U.escapeHtml(c.name) + "</span></span></td>" +
-        "<td>" + U.fmtUSD(c.price, c.price < 1 ? 4 : 2) + "</td>" +
+        "<td>" + U.fmtUSD(c.price, U.priceDp(c.price)) + "</td>" +
         '<td class="' + U.pctClass(d1) + '">' + U.fmtPct(d1, true) + "</td>" +
         '<td class="' + U.pctClass(d24) + '">' + U.fmtPct(d24, true) + "</td>" +
         '<td class="' + U.pctClass(d7) + '">' + U.fmtPct(d7, true) + "</td>" +
@@ -500,7 +500,7 @@ CP.render = (function () {
   }
   function levelRow(label, val, pct, color, extra) {
     return '<div class="lvl-row"><span class="lvl-label">' + label + '</span>' +
-      '<span class="lvl-val" style="color:' + color + '">' + U.fmtUSD(val, val < 1 ? 4 : 2) +
+      '<span class="lvl-val" style="color:' + color + '">' + U.fmtUSD(val, U.priceDp(val)) +
       (pct ? ' <span class="lvl-pct">' + pct + "</span>" : "") + (extra || "") + "</span></div>";
   }
 
@@ -544,7 +544,7 @@ CP.render = (function () {
           '<div class="cd-rank">Rank #' + (coin.rank || "—") + '</div>' +
         '</div>' +
         '<div class="cd-price-block">' +
-          '<div class="cd-price">' + U.fmtUSD(coin.price, coin.price < 1 ? 4 : 2) + '</div>' +
+          '<div class="cd-price">' + U.fmtUSD(coin.price, U.priceDp(coin.price)) + '</div>' +
           '<div class="cd-change ' + U.pctClass(change24) + '">' + U.fmtPct(change24, true) + ' (24h)</div>' +
         '</div>' +
       '</div>' +

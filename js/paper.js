@@ -165,9 +165,9 @@ CP.paper = (function () {
         "<td><strong>" + U.escapeHtml(s) + "</strong></td>" +
         '<td><span class="pill ' + sideCls + '">' + p.side.toUpperCase() + " " + p.lev + "x</span></td>" +
         "<td>" + trimCoin(p.size) + "</td>" +
-        "<td>" + U.fmtUSD(p.entry, p.entry < 1 ? 4 : 2) + "</td>" +
-        "<td>" + U.fmtUSD(mk, mk < 1 ? 4 : 2) + "</td>" +
-        "<td>" + U.fmtUSD(liqPrice(p.side, p.entry, p.lev), p.entry < 1 ? 4 : 2) + "</td>" +
+        "<td>" + U.fmtUSD(p.entry, U.priceDp(p.entry)) + "</td>" +
+        "<td>" + U.fmtUSD(mk, U.priceDp(mk)) + "</td>" +
+        "<td>" + U.fmtUSD(liqPrice(p.side, p.entry, p.lev), U.priceDp(p.entry)) + "</td>" +
         "<td>" + U.fmtUSD(p.margin) + "</td>" +
         '<td class="' + pnlCls + '">' + (pnl >= 0 ? "+" : "") + U.fmtUSD(pnl) + " (" + U.fmtPct(roe, true) + ")</td>" +
         '<td><button class="btn btn-sm paper-close" data-sym="' + U.escapeHtml(s) + '">Close</button></td>' +

@@ -1,4 +1,24 @@
 ===========================================
+DATE: 6/20/2026 (Session 20 — coin prices show >=5 decimals)
+-------------------------------------------
+ASK: coin prices must show at least 5 digits after the dot (e.g. 0.083375).
+PROBLEM: sub-$1 prices showed 4 decimals (header "$0.0834"), and the chart's
+price-line/axis label even fewer ("SHORT entry 0.08").
+
+DONE:
+- New U.priceDp(n) helper: 2 decimals for >=$1, else enough for ~5 sig figs and
+  at least 5 decimals (DOGE 0.083375 -> 6, 0.45 -> 5, tiny coins up to 8) +
+  U.fmtPrice(n). Verified: 0.083375 renders exactly, 0.0834 -> 0.083400.
+- Replaced every sub-$1 price format (was "< 1 ? 4/5/6 : 2") with U.priceDp(x)
+  across binance-live.js (header, 24h hi/lo, order book, trades, paper price),
+  render.js (signal levels, technical, screener, coin detail), paper.js
+  (entry/mark/liq), app.js (search results).
+- Chart: applyPriceFormat() sets the candle series priceFormat precision per coin
+  so the AXIS + the entry/stop/TP price-line labels show full precision
+  (e.g. "SHORT entry 0.083380" not "0.08"). Legend numbers use priceDp too.
+- Cache-busters v25 -> v26.
+
+===========================================
 DATE: 6/20/2026 (Session 19 — TradingView-style chart: MAs + volume + legend)
 -------------------------------------------
 ASK: best chart like TradingView, with clear long/short entry + close.
