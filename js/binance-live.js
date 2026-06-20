@@ -1,13 +1,15 @@
 /* Live Binance market view for the Trade tab.
  *
- * Candles come from Binance (klines REST history + @kline live stream), drawn on
- * a self-contained <canvas> (no external charting library), with the Trade
- * Signal's entry/stop/take-profit levels drawn on the chart. Order book + recent
- * trades + 24h header come from Binance's public WebSocket. No API keys.
+ * Chart: TradingView Lightweight Charts (free) for a real Binance-style chart
+ * with wheel/drag zoom, pan and crosshair, with the Trade Signal's entry/stop/
+ * take-profit drawn as price lines. The library loads from a CDN with several
+ * fallbacks; if every CDN is blocked it degrades to a self-contained <canvas>
+ * renderer so candles still show.
  *
- * Everything here needs Binance to be reachable; if it isn't (e.g. blocked on a
- * network) the panels show a clear notice. Streams/chart run only while the
- * Trade tab is open. */
+ * Data: Binance first (klines REST history + @kline live stream + order book +
+ * trades + ticker). If Binance is unreachable, candles fall back to CoinGecko so
+ * the chart still works on networks that block Binance (order book + trades are
+ * Binance-only and show a notice there). No API keys. */
 CP.live = (function () {
   var U = CP.util;
   var WS_BASE = "wss://stream.binance.com:9443/stream?streams=";
@@ -15,33 +17,41 @@ CP.live = (function () {
   var CG = (CP.config && CP.config.api && CP.config.api.coingecko) || "https://api.coingecko.com/api/v3";
   var CG_DAYS = { "1m": 1, "5m": 1, "15m": 1, "1h": 7, "4h": 14, "1d": 90 };
   var BUCKET = { "1m": 300, "5m": 300, "15m": 900, "1h": 3600, "4h": 14400, "1d": 86400 };
+  var LIBS = [
+    "https://cdn.jsdelivr.net/npm/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js",
+    "https://unpkg.com/lightweight-charts@4.1.3/dist/lightweight-charts.standalone.production.js",
+    "https://cdnjs.cloudflare.com/ajax/libs/lightweight-charts/4.1.3/lightweight-charts.standalone.production.js",
+  ];
 
   var st = {
     active: false, coinId: null, binSym: null, meta: null, interval: "15m",
     ws: null, gen: 0, poll: null, backup: false,
-    canvas: null, ctx: null, candles: [], levels: [], resizeWired: false,
+    mode: null, chart: null, series: null, priceLines: [], canvas: null, ctx: null,
+    candles: [], levels: [], resizeWired: false, building: false,
     book: null, trades: [], bookDirty: false, tradesDirty: false, rafPending: false,
     failCount: 0,
   };
 
   function el(id) { return U.el(id); }
   function setText(id, v) { var e = el(id); if (e) e.textContent = v; }
+  function baseOf(sym) { return (sym || "").replace("USDT", ""); }
+  function noteFor() {
+    var s = st.meta && st.meta.symbol ? st.meta.symbol : (st.coinId || "this coin");
+    return s + " isn’t a Binance USDT pair — no live chart/order book for it. The Trade Signal still works.";
+  }
 
   // ---------- lifecycle ----------
   function activate() {
     st.active = true;
-    ensureChart();
     wireIntervalButtons();
-    if (st.binSym) { loadKlines(); openSocket(); }
-    else showNote(noteFor());
-    draw();
+    ensureChart(function () { if (st.binSym) loadKlines(); resizeChart(); });
+    if (st.binSym) openSocket(); else showNote(noteFor());
   }
   function deactivate() { st.active = false; closeSocket(); stopBackupPoll(); }
 
   function setSymbol(coinId, meta) {
     var prevSym = st.binSym, sameCoin = coinId === st.coinId;
-    st.coinId = coinId;
-    st.meta = meta || null;
+    st.coinId = coinId; st.meta = meta || null;
     st.binSym = CP.api.binanceSymbol(coinId);
     paintHeaderStatic();
     setText("bxChartSym", (st.binSym || "—") + " · " + st.interval);
@@ -49,118 +59,113 @@ CP.live = (function () {
       CP.paper.setContext(st.binSym, baseOf(st.binSym), meta ? meta.price : 0);
       return;
     }
-    st.levels = [];
+    clearLevels();
     if (st.binSym) {
       hideNote();
       CP.paper.setContext(st.binSym, baseOf(st.binSym), meta ? meta.price : 0);
-      if (st.canvas) loadKlines();
+      if (st.mode) loadKlines();
       if (st.active) openSocket();
     } else {
       CP.paper.setContext(null, "", 0);
       stopBackupPoll();
-      if (st.canvas) { st.candles = []; draw(); }
+      renderCandles([], true);
       showNote(noteFor());
       degradeFeed();
     }
   }
-  function baseOf(sym) { return (sym || "").replace("USDT", ""); }
-  function noteFor() {
-    var s = st.meta && st.meta.symbol ? st.meta.symbol : (st.coinId || "this coin");
-    return s + " isn’t a Binance USDT pair — no live chart/order book for it. The Trade Signal still works.";
-  }
 
-  // ---------- canvas candlestick chart (no external library) ----------
-  function ensureChart() {
-    if (st.canvas) return;
+  // ---------- chart engine: Lightweight Charts (preferred) or canvas fallback ----------
+  function ensureChart(cb) {
+    if (st.mode) { if (cb) cb(); return; }
+    if (st.building) return;
     var host = el("bxChart"); if (!host) return;
+    st.building = true;
+    loadLib(function (ok) {
+      st.building = false;
+      if (st.mode) { if (cb) cb(); return; }
+      if (ok && window.LightweightCharts) buildLibChart(host); else buildCanvas(host);
+      if (!st.resizeWired) { window.addEventListener("resize", resizeChart); st.resizeWired = true; }
+      if (cb) cb();
+    });
+  }
+  function loadLib(cb) {
+    if (window.LightweightCharts) { cb(true); return; }
+    var i = 0;
+    (function tryNext() {
+      if (window.LightweightCharts) { cb(true); return; }
+      if (i >= LIBS.length) { cb(false); return; }
+      var s = document.createElement("script");
+      s.async = true; s.src = LIBS[i++];
+      s.onload = function () { if (window.LightweightCharts) cb(true); else tryNext(); };
+      s.onerror = tryNext;
+      document.head.appendChild(s);
+    })();
+  }
+  function buildLibChart(host) {
+    host.innerHTML = "";
+    var LC = window.LightweightCharts;
+    st.chart = LC.createChart(host, {
+      width: host.clientWidth || 600, height: 460,
+      layout: { background: { type: "solid", color: "#0d111c" }, textColor: "#8b9bb0" },
+      grid: { vertLines: { color: "rgba(255,255,255,0.04)" }, horzLines: { color: "rgba(255,255,255,0.04)" } },
+      timeScale: { timeVisible: true, secondsVisible: false, borderColor: "rgba(255,255,255,0.10)" },
+      rightPriceScale: { borderColor: "rgba(255,255,255,0.10)" },
+      crosshair: { mode: LC.CrosshairMode ? LC.CrosshairMode.Normal : 0 },
+    });
+    st.series = st.chart.addCandlestickSeries({
+      upColor: "#16c784", downColor: "#f03542", borderVisible: false,
+      wickUpColor: "#16c784", wickDownColor: "#f03542",
+    });
+    st.mode = "lib";
+  }
+  function buildCanvas(host) {
     host.innerHTML = "";
     var c = document.createElement("canvas");
     c.style.width = "100%"; c.style.height = "460px"; c.style.display = "block";
-    host.appendChild(c);
-    st.canvas = c; st.ctx = c.getContext("2d");
-    if (!st.resizeWired) { window.addEventListener("resize", function () { draw(); }); st.resizeWired = true; }
+    host.appendChild(c); st.canvas = c; st.ctx = c.getContext("2d"); st.mode = "canvas";
   }
-  function fmtP(p) { return p >= 1 ? p.toFixed(2) : (+p.toPrecision(4)).toString(); }
-  function fmtT(sec) { var d = new Date(sec * 1000); return ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2); }
-  function draw() {
-    var c = st.canvas, ctx = st.ctx; if (!c || !ctx) return;
-    var ratio = window.devicePixelRatio || 1, W = c.clientWidth || 600, H = 460;
-    c.width = W * ratio; c.height = H * ratio;
-    ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
-    ctx.clearRect(0, 0, W, H);
-    var candles = st.candles || [];
-    if (!candles.length) return;
-    var padL = 8, padR = 70, padT = 10, padB = 22, plotW = W - padL - padR, plotH = H - padT - padB;
-    // Scale the y-axis to the CANDLES only (like Binance). Signal levels that
-    // fall outside this range get pinned to the top/bottom edge below, so a
-    // far-away stop/target can't squash the candles into a flat line.
-    var lo = Infinity, hi = -Infinity;
-    candles.forEach(function (k) { if (k.low < lo) lo = k.low; if (k.high > hi) hi = k.high; });
-    if (!(hi > lo)) { hi = lo * 1.01 || 1; lo = lo * 0.99 || 0; }
-    var pad = (hi - lo) * 0.08; hi += pad; lo -= pad;
-    function y(p) { return padT + (1 - (p - lo) / (hi - lo)) * plotH; }
-    var n = candles.length, step = plotW / n, bw = Math.max(1, Math.min(step * 0.7, 14));
-    ctx.font = "10px Inter, system-ui, sans-serif"; ctx.textBaseline = "middle";
-    for (var i = 0; i <= 5; i++) {
-      var p = lo + (hi - lo) * i / 5, yy = y(p);
-      ctx.strokeStyle = "rgba(255,255,255,0.05)"; ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(padL + plotW, yy); ctx.stroke();
-      ctx.fillStyle = "#8b9bb0"; ctx.textAlign = "left"; ctx.fillText(fmtP(p), padL + plotW + 6, yy);
-    }
-    candles.forEach(function (k, idx) {
-      var x = padL + idx * step + step / 2, up = k.close >= k.open;
-      ctx.strokeStyle = up ? "#16c784" : "#f03542"; ctx.fillStyle = up ? "#16c784" : "#f03542";
-      ctx.beginPath(); ctx.moveTo(x, y(k.high)); ctx.lineTo(x, y(k.low)); ctx.stroke();
-      var yo = y(k.open), yc = y(k.close), top = Math.min(yo, yc), bh = Math.max(1, Math.abs(yc - yo));
-      ctx.fillRect(x - bw / 2, top, bw, bh);
-    });
-    (st.levels || []).forEach(function (l) {
-      ctx.fillStyle = l.color; ctx.textAlign = "right";
-      if (l.price <= hi && l.price >= lo) {
-        var yy = y(l.price);
-        ctx.strokeStyle = l.color; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.2;
-        ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(padL + plotW, yy); ctx.stroke(); ctx.setLineDash([]);
-        ctx.fillText(l.title + " " + fmtP(l.price), padL + plotW, yy - 6);
-      } else {
-        // off-screen level — pin it to the top/bottom edge with an arrow.
-        var atTop = l.price > hi;
-        ctx.fillText((atTop ? "▲ " : "▼ ") + l.title + " " + fmtP(l.price), padL + plotW, atTop ? padT + 7 : padT + plotH - 5);
-      }
-    });
-    ctx.fillStyle = "#5b6b80"; ctx.textAlign = "center";
-    var labelN = Math.min(6, n);
-    for (var t = 0; t < labelN; t++) {
-      var idx2 = labelN > 1 ? Math.floor(t * (n - 1) / (labelN - 1)) : 0;
-      var k2 = candles[idx2]; if (!k2) continue;
-      ctx.fillText(fmtT(k2.time), padL + idx2 * step + step / 2, H - 8);
-    }
+  function resizeChart() {
+    if (st.mode === "lib" && st.chart) {
+      var h = el("bxChart"); if (h && h.clientWidth) { try { st.chart.resize(h.clientWidth, 460); } catch (e) {} }
+    } else draw();
   }
 
-  // ---------- data: Binance klines ----------
-  // Binance first (real candles + live stream). If Binance is unreachable, fall
-  // back to CoinGecko so the chart still shows on networks that block Binance.
+  // ---------- candle data → render (mode-aware) ----------
+  function renderCandles(data, refit) {
+    st.candles = data || [];
+    if (st.mode === "lib" && st.series) {
+      try { st.series.setData(st.candles); if (refit && st.candles.length) st.chart.timeScale().fitContent(); } catch (e) {}
+    } else draw();
+    if (st.candles.length) { hideNote(); if (st.backup) setHiLoFromCandles(); }
+    setLevels(CP.state && CP.state.currentPlan);
+  }
+  function updateLastCandle(c) {
+    var last = st.candles[st.candles.length - 1];
+    if (last && c.time === last.time) st.candles[st.candles.length - 1] = c;
+    else if (!last || c.time > last.time) { st.candles.push(c); if (st.candles.length > 500) st.candles.shift(); }
+    else return;
+    if (st.mode === "lib" && st.series) { try { st.series.update(c); } catch (e) {} } else draw();
+  }
+
+  // ---------- data: Binance first, CoinGecko fallback ----------
   function loadKlines() {
-    if (!st.canvas || !st.binSym) return;
+    if (!st.mode || !st.binSym) return;
     stopBackupPoll();
     var sym = st.binSym, iv = st.interval;
     U.fetchJSON(BREST + "/klines?symbol=" + sym + "&interval=" + iv + "&limit=300", 8000).then(function (k) {
       if (sym !== st.binSym || iv !== st.interval) return;
       if (!k || !k.length) throw new Error("empty");
       st.backup = false;
-      st.candles = k.map(function (c) { return { time: Math.floor(c[0] / 1000), open: +c[1], high: +c[2], low: +c[3], close: +c[4] }; });
-      hideNote(); draw(); setLevels(CP.state && CP.state.currentPlan);
+      renderCandles(k.map(function (c) { return { time: Math.floor(c[0] / 1000), open: +c[1], high: +c[2], low: +c[3], close: +c[4] }; }), true);
     }).catch(function () {
       if (sym === st.binSym && iv === st.interval) loadBackupChart(sym, iv);
     });
   }
-
-  // ---- backup chart (CoinGecko) for when Binance is blocked ----
   function loadBackupChart(sym, iv) {
     st.backup = true;
-    drawFromCache(); // instant: build candles from price history the app already has
+    drawFromCache();
     fetchCGmarket().then(function (d) {
-      if (sym === st.binSym && iv === st.interval && d.length) {
-        st.candles = d; hideNote(); setHiLoFromCandles(); draw(); setLevels(CP.state && CP.state.currentPlan);
-      }
+      if (sym === st.binSym && iv === st.interval && d.length) renderCandles(d, true);
     }).catch(function () {
       if (!st.candles.length) showNote("Couldn’t load chart data on this network. The signal still works.");
     });
@@ -176,7 +181,7 @@ CP.live = (function () {
       data.push({ time: times[i] ? Math.floor(times[i] / 1000) : i, open: o, high: Math.max(o, c), low: Math.min(o, c), close: c });
     }
     if (!data.length) return false;
-    st.candles = data; hideNote(); setHiLoFromCandles(); draw(); setLevels(CP.state && CP.state.currentPlan);
+    renderCandles(data, true);
     return true;
   }
   function fetchCGmarket() {
@@ -215,30 +220,41 @@ CP.live = (function () {
         CP.paper.mark(st.binSym, p);
         if (st.candles.length) {
           var last = st.candles[st.candles.length - 1];
-          last.close = p; if (p > last.high) last.high = p; if (p < last.low) last.low = p; draw();
+          updateLastCandle({ time: last.time, open: last.open, high: Math.max(last.high, p), low: Math.min(last.low, p), close: p });
         }
       }).catch(function () {});
     }, 15000);
   }
   function stopBackupPoll() { if (st.poll) { clearInterval(st.poll); st.poll = null; } }
-  function onKline(k) {
-    if (!st.canvas || !k || st.backup) return;
-    var t = Math.floor(k.t / 1000), c = { time: t, open: +k.o, high: +k.h, low: +k.l, close: +k.c };
-    var last = st.candles[st.candles.length - 1];
-    if (last && t === last.time) st.candles[st.candles.length - 1] = c;
-    else if (!last || t > last.time) { st.candles.push(c); if (st.candles.length > 400) st.candles.shift(); }
-    draw();
-  }
 
   // ---------- signal levels ----------
-  function setLevels(plan) {
+  function clearLevels() {
     st.levels = [];
-    if (plan && plan.entry) {
-      st.levels.push({ price: plan.entry, color: "#e8edf2", title: plan.side === "long" ? "LONG entry" : "SHORT entry" });
-      if (plan.stop > 0) st.levels.push({ price: plan.stop, color: "#f03542", title: "Stop" });
-      (plan.targets || []).forEach(function (tp, i) { if (tp > 0) st.levels.push({ price: tp, color: "#16c784", title: "TP" + (i + 1) }); });
+    if (st.mode === "lib" && st.series) {
+      st.priceLines.forEach(function (l) { try { st.series.removePriceLine(l); } catch (e) {} });
+      st.priceLines = [];
     }
-    draw();
+  }
+  function setLevels(plan) {
+    var lv = [];
+    if (plan && plan.entry) {
+      lv.push({ price: plan.entry, color: "#e8edf2", title: plan.side === "long" ? "LONG entry" : "SHORT entry" });
+      if (plan.stop > 0) lv.push({ price: plan.stop, color: "#f03542", title: "Stop" });
+      (plan.targets || []).forEach(function (tp, i) { if (tp > 0) lv.push({ price: tp, color: "#16c784", title: "TP" + (i + 1) }); });
+    }
+    st.levels = lv;
+    if (st.mode === "lib" && st.series) {
+      st.priceLines.forEach(function (l) { try { st.series.removePriceLine(l); } catch (e) {} });
+      st.priceLines = [];
+      var LS = window.LightweightCharts && window.LightweightCharts.LineStyle;
+      lv.forEach(function (l) {
+        try {
+          st.priceLines.push(st.series.createPriceLine({
+            price: l.price, color: l.color, lineWidth: 2, lineStyle: LS ? LS.Dashed : 2, axisLabelVisible: true, title: l.title,
+          }));
+        } catch (e) {}
+      });
+    } else draw();
   }
 
   function wireIntervalButtons() {
@@ -254,8 +270,57 @@ CP.live = (function () {
       document.querySelectorAll(".bx-iv").forEach(function (x) { x.classList.toggle("active", x === b); });
       setText("bxChartSym", (st.binSym || "—") + " · " + iv);
       loadKlines();
-      if (st.active && st.binSym) openSocket(); // re-subscribe kline stream at the new interval
+      if (st.active && st.binSym) openSocket();
     });
+  }
+
+  // ---------- canvas fallback renderer (only used if no library could load) ----------
+  function fmtP(p) { return p >= 1 ? p.toFixed(2) : (+p.toPrecision(4)).toString(); }
+  function fmtT(sec) { var d = new Date(sec * 1000); return ("0" + d.getHours()).slice(-2) + ":" + ("0" + d.getMinutes()).slice(-2); }
+  function draw() {
+    var c = st.canvas, ctx = st.ctx; if (!c || !ctx) return;
+    var ratio = window.devicePixelRatio || 1, W = c.clientWidth || 600, H = 460;
+    c.width = W * ratio; c.height = H * ratio; ctx.setTransform(ratio, 0, 0, ratio, 0, 0); ctx.clearRect(0, 0, W, H);
+    var candles = st.candles || []; if (!candles.length) return;
+    var padL = 8, padR = 70, padT = 10, padB = 22, plotW = W - padL - padR, plotH = H - padT - padB;
+    var lo = Infinity, hi = -Infinity;
+    candles.forEach(function (k) { if (k.low < lo) lo = k.low; if (k.high > hi) hi = k.high; });
+    if (!(hi > lo)) { hi = lo * 1.01 || 1; lo = lo * 0.99 || 0; }
+    var pad = (hi - lo) * 0.08; hi += pad; lo -= pad;
+    function y(p) { return padT + (1 - (p - lo) / (hi - lo)) * plotH; }
+    var n = candles.length, step = plotW / n, bw = Math.max(1, Math.min(step * 0.7, 14));
+    ctx.font = "10px Inter, system-ui, sans-serif"; ctx.textBaseline = "middle";
+    for (var i = 0; i <= 5; i++) {
+      var p = lo + (hi - lo) * i / 5, yy = y(p);
+      ctx.strokeStyle = "rgba(255,255,255,0.05)"; ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(padL + plotW, yy); ctx.stroke();
+      ctx.fillStyle = "#8b9bb0"; ctx.textAlign = "left"; ctx.fillText(fmtP(p), padL + plotW + 6, yy);
+    }
+    candles.forEach(function (k, idx) {
+      var x = padL + idx * step + step / 2, up = k.close >= k.open;
+      ctx.strokeStyle = up ? "#16c784" : "#f03542"; ctx.fillStyle = up ? "#16c784" : "#f03542";
+      ctx.beginPath(); ctx.moveTo(x, y(k.high)); ctx.lineTo(x, y(k.low)); ctx.stroke();
+      var yo = y(k.open), yc = y(k.close), top = Math.min(yo, yc), bh = Math.max(1, Math.abs(yc - yo));
+      ctx.fillRect(x - bw / 2, top, bw, bh);
+    });
+    (st.levels || []).forEach(function (l) {
+      ctx.fillStyle = l.color; ctx.textAlign = "right";
+      if (l.price <= hi && l.price >= lo) {
+        var yy = y(l.price);
+        ctx.strokeStyle = l.color; ctx.setLineDash([5, 4]); ctx.lineWidth = 1.2;
+        ctx.beginPath(); ctx.moveTo(padL, yy); ctx.lineTo(padL + plotW, yy); ctx.stroke(); ctx.setLineDash([]);
+        ctx.fillText(l.title + " " + fmtP(l.price), padL + plotW, yy - 6);
+      } else {
+        var atTop = l.price > hi;
+        ctx.fillText((atTop ? "▲ " : "▼ ") + l.title + " " + fmtP(l.price), padL + plotW, atTop ? padT + 7 : padT + plotH - 5);
+      }
+    });
+    ctx.fillStyle = "#5b6b80"; ctx.textAlign = "center";
+    var labelN = Math.min(6, n);
+    for (var t = 0; t < labelN; t++) {
+      var idx2 = labelN > 1 ? Math.floor(t * (n - 1) / (labelN - 1)) : 0;
+      var k2 = candles[idx2]; if (!k2) continue;
+      ctx.fillText(fmtT(k2.time), padL + idx2 * step + step / 2, H - 8);
+    }
   }
 
   // ---------- Binance WebSocket: depth + aggTrade + ticker + kline ----------
@@ -295,10 +360,13 @@ CP.live = (function () {
     if (el("bxBook")) el("bxBook").innerHTML = '<div class="bx-unavail">Live order book is unavailable — Binance looks unreachable on this network.</div>';
     if (el("bxTrades")) el("bxTrades").innerHTML = '<div class="bx-unavail">Recent trades unavailable — Binance unreachable here.</div>';
   }
-
+  function onKline(k) {
+    if (!st.mode || !k || st.backup) return;
+    updateLastCandle({ time: Math.floor(k.t / 1000), open: +k.o, high: +k.h, low: +k.l, close: +k.c });
+  }
   function onTrade(d) {
     st.trades.unshift({ p: +d.p, q: +d.q, m: d.m, t: d.T });
-    if (st.trades.length > 10) st.trades.length = 10; // locked at 10
+    if (st.trades.length > 10) st.trades.length = 10;
     st.tradesDirty = true; schedulePaint();
   }
   function onTicker(d) {

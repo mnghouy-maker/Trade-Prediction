@@ -1,4 +1,31 @@
 ===========================================
+DATE: 6/20/2026 (Session 17 — real interactive chart: zoom/pan like Binance)
+-------------------------------------------
+ASK: "make it exactly like Binance chart that allows me to zoom in and out."
+
+DONE:
+- Chart engine is now TradingView Lightweight Charts (free lib) — gives real
+  wheel/drag zoom, pan and a crosshair, like Binance. Entry/stop/TP drawn as
+  proper price lines (createPriceLine); the lib autoscales to the candles so far
+  levels don't squash it.
+- Library loads from a CDN with THREE fallbacks (jsdelivr -> unpkg -> cdnjs) to
+  survive a blocked CDN. If every CDN is blocked, it falls back to the
+  self-contained <canvas> renderer (static, no zoom) so candles still show.
+- Data layer unchanged: Binance first (klines + @kline live + book/trades/
+  ticker); CoinGecko fallback for candles when Binance is blocked; backup poll.
+  Rendering is mode-aware (renderCandles/updateLastCandle/setLevels route to lib
+  or canvas). Cache-busters v22 -> v23.
+
+DECISIONS MADE:
+- Accept the CDN dependency for the real interactive chart (the canvas can't do
+  smooth zoom). Mitigated with 3 CDNs + canvas fallback so it still shows
+  candles on a fully-locked network (just without zoom there).
+
+HONEST LIMITS:
+- On a network that blocks ALL three CDNs, you get the static canvas chart (no
+  zoom) instead. Order book + trades still Binance-only.
+
+===========================================
 DATE: 6/20/2026 (Session 16 — fix squashed candles, scale like Binance)
 -------------------------------------------
 PROBLEM (screenshot): candles were drawn as a flat thin line. Cause: the chart's
