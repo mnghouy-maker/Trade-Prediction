@@ -12,10 +12,13 @@ CP.live = (function () {
   var U = CP.util;
   var WS_BASE = "wss://stream.binance.com:9443/stream?streams=";
   var BREST = (CP.config && CP.config.api && CP.config.api.binance) || "https://api.binance.com/api/v3";
+  var CG = (CP.config && CP.config.api && CP.config.api.coingecko) || "https://api.coingecko.com/api/v3";
+  var CG_DAYS = { "1m": 1, "5m": 1, "15m": 1, "1h": 7, "4h": 14, "1d": 90 };
+  var BUCKET = { "1m": 300, "5m": 300, "15m": 900, "1h": 3600, "4h": 14400, "1d": 86400 };
 
   var st = {
     active: false, coinId: null, binSym: null, meta: null, interval: "15m",
-    ws: null, gen: 0,
+    ws: null, gen: 0, poll: null, backup: false,
     canvas: null, ctx: null, candles: [], levels: [], resizeWired: false,
     book: null, trades: [], bookDirty: false, tradesDirty: false, rafPending: false,
     failCount: 0,
@@ -33,7 +36,7 @@ CP.live = (function () {
     else showNote(noteFor());
     draw();
   }
-  function deactivate() { st.active = false; closeSocket(); }
+  function deactivate() { st.active = false; closeSocket(); stopBackupPoll(); }
 
   function setSymbol(coinId, meta) {
     var prevSym = st.binSym, sameCoin = coinId === st.coinId;
@@ -54,6 +57,7 @@ CP.live = (function () {
       if (st.active) openSocket();
     } else {
       CP.paper.setContext(null, "", 0);
+      stopBackupPoll();
       if (st.canvas) { st.candles = []; draw(); }
       showNote(noteFor());
       degradeFeed();
@@ -123,22 +127,93 @@ CP.live = (function () {
   }
 
   // ---------- data: Binance klines ----------
+  // Binance first (real candles + live stream). If Binance is unreachable, fall
+  // back to CoinGecko so the chart still shows on networks that block Binance.
   function loadKlines() {
     if (!st.canvas || !st.binSym) return;
+    stopBackupPoll();
     var sym = st.binSym, iv = st.interval;
-    U.fetchJSON(BREST + "/klines?symbol=" + sym + "&interval=" + iv + "&limit=300", 12000).then(function (k) {
+    U.fetchJSON(BREST + "/klines?symbol=" + sym + "&interval=" + iv + "&limit=300", 8000).then(function (k) {
       if (sym !== st.binSym || iv !== st.interval) return;
       if (!k || !k.length) throw new Error("empty");
+      st.backup = false;
       st.candles = k.map(function (c) { return { time: Math.floor(c[0] / 1000), open: +c[1], high: +c[2], low: +c[3], close: +c[4] }; });
-      hideNote();
-      draw();
-      setLevels(CP.state && CP.state.currentPlan);
+      hideNote(); draw(); setLevels(CP.state && CP.state.currentPlan);
     }).catch(function () {
-      showNote("Couldn’t load the Binance chart — Binance looks unreachable on this network.");
+      if (sym === st.binSym && iv === st.interval) loadBackupChart(sym, iv);
     });
   }
+
+  // ---- backup chart (CoinGecko) for when Binance is blocked ----
+  function loadBackupChart(sym, iv) {
+    st.backup = true;
+    drawFromCache(); // instant: build candles from price history the app already has
+    fetchCGmarket().then(function (d) {
+      if (sym === st.binSym && iv === st.interval && d.length) {
+        st.candles = d; hideNote(); setHiLoFromCandles(); draw(); setLevels(CP.state && CP.state.currentPlan);
+      }
+    }).catch(function () {
+      if (!st.candles.length) showNote("Couldn’t load chart data on this network. The signal still works.");
+    });
+    startBackupPoll();
+  }
+  function drawFromCache() {
+    var e = CP.state && CP.state.coinCache && CP.state.coinCache[st.coinId];
+    var ch = e && e.chart;
+    if (!ch || !ch.closes || ch.closes.length < 2) return false;
+    var closes = ch.closes, times = ch.times || [], data = [];
+    for (var i = Math.max(1, closes.length - 180); i < closes.length; i++) {
+      var o = closes[i - 1], c = closes[i];
+      data.push({ time: times[i] ? Math.floor(times[i] / 1000) : i, open: o, high: Math.max(o, c), low: Math.min(o, c), close: c });
+    }
+    if (!data.length) return false;
+    st.candles = data; hideNote(); setHiLoFromCandles(); draw(); setLevels(CP.state && CP.state.currentPlan);
+    return true;
+  }
+  function fetchCGmarket() {
+    var url = CG + "/coins/" + st.coinId + "/market_chart?vs_currency=usd&days=" + (CG_DAYS[st.interval] || 1);
+    return U.fetchJSON(url, 9000).then(function (d) { return aggregateToCandles(d && d.prices, st.interval); });
+  }
+  function aggregateToCandles(prices, iv) {
+    var sec = BUCKET[iv] || 900, out = [], cur = null, bucket = null;
+    (prices || []).forEach(function (p) {
+      var t = Math.floor(p[0] / 1000), v = +p[1];
+      if (!(v > 0)) return;
+      var b = Math.floor(t / sec) * sec;
+      if (b !== bucket) { if (cur) out.push(cur); bucket = b; cur = { time: b, open: v, high: v, low: v, close: v }; }
+      else { if (v > cur.high) cur.high = v; if (v < cur.low) cur.low = v; cur.close = v; }
+    });
+    if (cur) out.push(cur);
+    return out;
+  }
+  function setHiLoFromCandles() {
+    if (!st.candles.length) return;
+    var cutoff = Math.floor(Date.now() / 1000) - 86400, hi = -Infinity, lo = Infinity;
+    st.candles.forEach(function (k) { if (k.time >= cutoff) { if (k.high > hi) hi = k.high; if (k.low < lo) lo = k.low; } });
+    if (!(hi > 0)) st.candles.forEach(function (k) { if (k.high > hi) hi = k.high; if (k.low < lo) lo = k.low; });
+    var dp = hi < 1 ? 4 : 2;
+    if (hi > 0) setText("bxHigh", U.fmtUSD(hi, dp));
+    if (lo < Infinity) setText("bxLow", U.fmtUSD(lo, dp));
+  }
+  function startBackupPoll() {
+    stopBackupPoll();
+    st.poll = setInterval(function () {
+      if (!st.active || !st.backup || !st.coinId) return;
+      U.fetchJSON(CG + "/simple/price?ids=" + st.coinId + "&vs_currencies=usd", 6000).then(function (r) {
+        var p = r && r[st.coinId] && r[st.coinId].usd;
+        if (!(p > 0)) return;
+        setText("bxPrice", U.fmtUSD(p, p < 1 ? 4 : 2));
+        CP.paper.mark(st.binSym, p);
+        if (st.candles.length) {
+          var last = st.candles[st.candles.length - 1];
+          last.close = p; if (p > last.high) last.high = p; if (p < last.low) last.low = p; draw();
+        }
+      }).catch(function () {});
+    }, 15000);
+  }
+  function stopBackupPoll() { if (st.poll) { clearInterval(st.poll); st.poll = null; } }
   function onKline(k) {
-    if (!st.canvas || !k) return;
+    if (!st.canvas || !k || st.backup) return;
     var t = Math.floor(k.t / 1000), c = { time: t, open: +k.o, high: +k.h, low: +k.l, close: +k.c };
     var last = st.candles[st.candles.length - 1];
     if (last && t === last.time) st.candles[st.candles.length - 1] = c;

@@ -1,4 +1,30 @@
 ===========================================
+DATE: 6/19/2026 (Session 15 — Binance-first chart WITH backup)
+-------------------------------------------
+CLARIFICATION FROM NIMITH:
+- On a network that reaches Binance, the chart shows fine. On a network that
+  blocks Binance, the chart was blank. He wants it to show on BOTH.
+
+DONE TODAY:
+- Made the chart Binance-FIRST with a CoinGecko FALLBACK (best of both):
+  * Binance reachable -> real Binance candles + live @kline stream + order book +
+    trades + ticker (exactly what he likes).
+  * Binance blocked -> falls back to CoinGecko: draws instantly from the price
+    history the app already loaded, upgrades to intraday candles from CoinGecko
+    market_chart, and polls CoinGecko /simple/price (15s) to keep price + the
+    last candle moving. 24h high/low computed from the candles.
+  * st.backup flag keeps the two from mixing; backup poll stops on tab leave /
+    coin change / Binance success. Order book + trades stay Binance-only (notice
+    when blocked) since there's no free real-time alternative.
+- Self-contained canvas renderer + entry/stop/TP overlay + interval switcher +
+  trades-locked-to-10 all retained. Cache-busters v20 -> v21.
+
+DECISIONS MADE:
+- Reinstated the fallback (removed in session 14) but as a true fallback, not the
+  primary — so Binance users get the real Binance chart and blocked users still
+  see candles. This is the resolution of the back-and-forth in sessions 11-14.
+
+===========================================
 DATE: 6/19/2026 (Session 14 — revert chart back to Binance, per Nimith)
 -------------------------------------------
 DONE TODAY:
