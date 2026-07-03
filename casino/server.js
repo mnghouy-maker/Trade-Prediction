@@ -16,8 +16,8 @@ const crypto = require("crypto");
 const fs = require("fs");
 const path = require("path");
 
-const PORT = process.env.CASINO_PORT || 8090;
-const DATA_DIR = path.join(__dirname, "data");
+const PORT = process.env.PORT || process.env.CASINO_PORT || 8090;
+const DATA_DIR = process.env.CASINO_DATA_DIR || path.join(__dirname, "data");
 const DB_FILE = path.join(DATA_DIR, "db.json");
 const COOKIE_NAME = "casino_session";
 const SESSION_DAYS = 7;

@@ -34,11 +34,21 @@ DECISIONS MADE:
 - JSON-file storage (fine for a small member list; swap to SQLite if it grows).
 - Casino kept fully separate from the trading dashboard (own folder, own port).
 
+LATER SAME DAY (deployment prep):
+- Nimith asked to put the site online. Prepared one-click Render deploy:
+  render.yaml blueprint at repo root (free plan, service golden-spin-casino).
+- server.js now respects PORT (Render sets it), CASINO_DATA_DIR (for a
+  persistent disk later) and CASINO_ADMIN_PASSWORD (asked for during the
+  blueprint setup, so no default password on a public URL).
+- Free plan limits noted in render.yaml: sleeps when idle, and the database
+  resets on restart/redeploy. For real customers: starter plan + 1GB disk
+  mounted at /data (instructions commented in render.yaml).
+
 STILL PENDING / NEXT TIME:
+- Nimith to create the free Render account and deploy (steps given in chat).
 - Nimith to review the look and the paytable numbers (house edge adjustable).
 - Possible next games: blackjack, roulette, crash.
-- Deployment: needs a Node host (Render/Railway/VPS) — Netlify/Vercel static
-  hosting won't run this server. Discuss when ready.
+- Before real customers: upgrade Render to starter + persistent disk.
 
 ===========================================
 DATE: 6/20/2026 (Session 20 — coin prices show >=5 decimals)
