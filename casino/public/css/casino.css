@@ -1,0 +1,394 @@
+/* Golden Spin — shared styles (game + admin) */
+
+:root {
+  --bg: #0c0a12;
+  --bg-2: #14111e;
+  --card: #1a1626;
+  --card-2: #221c33;
+  --line: #2e2745;
+  --text: #ece7f4;
+  --muted: #9a92b0;
+  --gold: #f0b429;
+  --gold-2: #ffd873;
+  --green: #3ecf8e;
+  --red: #f4587a;
+  --radius: 14px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  background:
+    radial-gradient(1000px 500px at 50% -10%, #241a3f 0%, transparent 60%),
+    var(--bg);
+  color: var(--text);
+  font-family: "Inter", -apple-system, "Segoe UI", sans-serif;
+  min-height: 100vh;
+}
+
+.display { font-family: "Bebas Neue", "Inter", sans-serif; letter-spacing: 2px; }
+
+a { color: var(--gold); text-decoration: none; }
+
+/* ------------------------------ layout ------------------------------ */
+
+.topbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 14px 22px;
+  border-bottom: 1px solid var(--line);
+  background: rgba(20, 17, 30, 0.85);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  backdrop-filter: blur(8px);
+}
+
+.brand {
+  font-family: "Bebas Neue", sans-serif;
+  font-size: 26px;
+  letter-spacing: 3px;
+  color: var(--gold);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.brand .coin {
+  width: 26px; height: 26px; border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, var(--gold-2), var(--gold) 60%, #b57e0a);
+  box-shadow: 0 0 12px rgba(240, 180, 41, 0.45);
+}
+
+.topbar-right { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+
+.balance-chip {
+  display: flex; align-items: center; gap: 8px;
+  background: var(--card-2);
+  border: 1px solid var(--line);
+  padding: 8px 14px;
+  border-radius: 999px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.balance-chip .label { color: var(--muted); font-size: 12px; font-weight: 500; }
+.balance-chip .value { color: var(--gold-2); }
+
+.wrap { max-width: 1080px; margin: 0 auto; padding: 26px 18px 60px; }
+
+/* ------------------------------ cards ------------------------------- */
+
+.card {
+  background: linear-gradient(180deg, var(--card-2) 0%, var(--card) 100%);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 20px;
+}
+
+.card h2 {
+  font-size: 15px;
+  text-transform: uppercase;
+  letter-spacing: 1.5px;
+  color: var(--muted);
+  margin-bottom: 14px;
+  font-weight: 600;
+}
+
+/* ------------------------------ buttons ----------------------------- */
+
+button {
+  font-family: inherit;
+  cursor: pointer;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+}
+
+.btn {
+  padding: 10px 18px;
+  background: var(--card-2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  transition: border-color 0.15s, background 0.15s;
+}
+.btn:hover { border-color: var(--gold); }
+
+.btn-gold {
+  background: linear-gradient(180deg, var(--gold-2), var(--gold));
+  color: #241a02;
+  font-weight: 700;
+  border: none;
+}
+.btn-gold:hover { filter: brightness(1.08); }
+.btn-gold:disabled { filter: grayscale(0.7) brightness(0.7); cursor: not-allowed; }
+
+.btn-danger { background: transparent; border: 1px solid var(--red); color: var(--red); }
+.btn-danger:hover { background: rgba(244, 88, 122, 0.12); }
+
+.btn-sm { padding: 6px 10px; font-size: 12.5px; border-radius: 8px; }
+
+/* ------------------------------ forms ------------------------------- */
+
+label { display: block; font-size: 12.5px; color: var(--muted); margin: 12px 0 6px; }
+
+input, select {
+  width: 100%;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--text);
+  padding: 10px 12px;
+  font-size: 14px;
+  font-family: inherit;
+}
+input:focus, select:focus { outline: none; border-color: var(--gold); }
+
+.form-error { color: var(--red); font-size: 13px; margin-top: 10px; min-height: 18px; }
+.form-ok { color: var(--green); font-size: 13px; margin-top: 10px; }
+
+/* ------------------------------ login ------------------------------- */
+
+.login-screen {
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.login-card {
+  width: 100%;
+  max-width: 380px;
+  text-align: center;
+  padding: 34px 28px 28px;
+}
+.login-card .brand { justify-content: center; font-size: 34px; margin-bottom: 4px; }
+.login-card .tagline { color: var(--muted); font-size: 13px; margin-bottom: 18px; }
+.login-card form { text-align: left; }
+.login-card .btn-gold { width: 100%; margin-top: 18px; padding: 12px; font-size: 15px; }
+
+/* ------------------------------ slot -------------------------------- */
+
+.game-grid {
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 20px;
+  align-items: start;
+}
+
+.machine {
+  text-align: center;
+  padding: 26px 22px 24px;
+  position: relative;
+  overflow: hidden;
+}
+
+.machine::before {
+  content: "";
+  position: absolute;
+  inset: -40% -20% auto;
+  height: 70%;
+  background: radial-gradient(closest-side, rgba(240, 180, 41, 0.14), transparent);
+  pointer-events: none;
+}
+
+.machine h1 {
+  font-family: "Bebas Neue", sans-serif;
+  letter-spacing: 4px;
+  font-size: 30px;
+  color: var(--gold-2);
+  margin-bottom: 18px;
+  text-shadow: 0 0 18px rgba(240, 180, 41, 0.35);
+}
+
+.reels {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  padding: 16px;
+  background: #080611;
+  border: 1px solid var(--line);
+  border-radius: 16px;
+  box-shadow: inset 0 6px 24px rgba(0, 0, 0, 0.7);
+}
+
+.reel {
+  width: 110px;
+  height: 110px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: linear-gradient(180deg, #171226, #1e1830 50%, #171226);
+  border: 1px solid #372e55;
+  position: relative;
+}
+.reel::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  box-shadow: inset 0 18px 16px -14px rgba(0,0,0,0.85), inset 0 -18px 16px -14px rgba(0,0,0,0.85);
+  pointer-events: none;
+}
+
+.reel .strip { will-change: transform; }
+
+.cell {
+  width: 110px;
+  height: 110px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.cell svg { width: 64px; height: 64px; }
+
+.reel.win-flash { animation: winflash 0.5s ease-in-out 3; }
+@keyframes winflash {
+  0%, 100% { box-shadow: none; }
+  50% { box-shadow: 0 0 0 2px var(--gold), 0 0 22px rgba(240, 180, 41, 0.55); }
+}
+
+.result-line {
+  min-height: 30px;
+  margin-top: 16px;
+  font-size: 17px;
+  font-weight: 700;
+}
+.result-line.win { color: var(--gold-2); text-shadow: 0 0 14px rgba(240, 180, 41, 0.4); }
+.result-line.lose { color: var(--muted); font-weight: 500; }
+
+.bet-row {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 8px;
+  margin-top: 16px;
+  flex-wrap: wrap;
+}
+.bet-row .label { color: var(--muted); font-size: 13px; margin-right: 4px; }
+
+.bet-btn {
+  padding: 8px 14px;
+  border-radius: 999px;
+  background: var(--bg-2);
+  border: 1px solid var(--line);
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+.bet-btn.selected {
+  border-color: var(--gold);
+  color: var(--gold-2);
+  background: rgba(240, 180, 41, 0.1);
+}
+
+.spin-btn {
+  margin-top: 18px;
+  padding: 14px 60px;
+  font-size: 18px;
+  font-family: "Bebas Neue", sans-serif;
+  letter-spacing: 3px;
+  border-radius: 999px;
+  box-shadow: 0 6px 24px rgba(240, 180, 41, 0.3);
+}
+
+/* --------------------------- side panels ---------------------------- */
+
+.paytable table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+.paytable td { padding: 7px 4px; border-bottom: 1px solid var(--line); }
+.paytable tr:last-child td { border-bottom: none; }
+.paytable .combo { display: flex; gap: 4px; align-items: center; }
+.paytable .combo svg { width: 22px; height: 22px; }
+.paytable .pays { text-align: right; color: var(--gold-2); font-weight: 600; }
+
+.history-list { list-style: none; max-height: 300px; overflow-y: auto; font-size: 13px; }
+.history-list li {
+  display: flex;
+  justify-content: space-between;
+  padding: 7px 2px;
+  border-bottom: 1px solid var(--line);
+  color: var(--muted);
+}
+.history-list li .amt.win { color: var(--green); font-weight: 600; }
+.history-list li .amt.lose { color: var(--red); }
+
+/* ------------------------------ admin ------------------------------- */
+
+.stat-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  gap: 14px;
+  margin-bottom: 20px;
+}
+.stat {
+  background: linear-gradient(180deg, var(--card-2), var(--card));
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  padding: 16px 18px;
+}
+.stat .k { font-size: 12px; color: var(--muted); text-transform: uppercase; letter-spacing: 1px; }
+.stat .v { font-size: 24px; font-weight: 700; margin-top: 6px; font-variant-numeric: tabular-nums; }
+.stat .v.gold { color: var(--gold-2); }
+.stat .v.green { color: var(--green); }
+.stat .v.red { color: var(--red); }
+
+.admin-grid { display: grid; grid-template-columns: 1fr 320px; gap: 20px; align-items: start; }
+
+.table-scroll { overflow-x: auto; }
+table.data { width: 100%; border-collapse: collapse; font-size: 13.5px; }
+table.data th {
+  text-align: left;
+  color: var(--muted);
+  font-weight: 600;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--line);
+}
+table.data td { padding: 10px; border-bottom: 1px solid var(--line); vertical-align: middle; }
+table.data tr:hover td { background: rgba(255, 255, 255, 0.02); }
+table.data .num { font-variant-numeric: tabular-nums; }
+
+.pill {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+}
+.pill.on { background: rgba(62, 207, 142, 0.14); color: var(--green); }
+.pill.off { background: rgba(244, 88, 122, 0.14); color: var(--red); }
+
+.row-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+/* ------------------------------ modal ------------------------------- */
+
+.modal-back {
+  position: fixed;
+  inset: 0;
+  background: rgba(5, 3, 10, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 50;
+  padding: 20px;
+}
+.modal {
+  width: 100%;
+  max-width: 440px;
+  max-height: 85vh;
+  overflow-y: auto;
+}
+.modal h3 { font-size: 17px; margin-bottom: 6px; }
+.modal .sub { color: var(--muted); font-size: 13px; margin-bottom: 10px; }
+.modal-actions { display: flex; gap: 10px; justify-content: flex-end; margin-top: 18px; }
+
+.hidden { display: none !important; }
+
+/* ---------------------------- responsive ---------------------------- */
+
+@media (max-width: 900px) {
+  .game-grid, .admin-grid { grid-template-columns: 1fr; }
+  .reel, .cell { width: 88px; height: 88px; }
+  .cell svg { width: 52px; height: 52px; }
+}

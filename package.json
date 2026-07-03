@@ -6,7 +6,8 @@
   "scripts": {
     "start": "node server/index.js",
     "server": "node server/index.js",
-    "static": "python3 -m http.server 8080"
+    "static": "python3 -m http.server 8080",
+    "casino": "node casino/server.js"
   },
   "dependencies": {
     "express": "^4.19.2"

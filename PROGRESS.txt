@@ -1,4 +1,46 @@
 ===========================================
+DATE: 7/3/2026 (Session 21 — NEW: casino site with slot game + admin panel)
+-------------------------------------------
+ASK: a casino-style website, first game is a slot machine. Two kinds of login:
+customers (play) and admin (Nimith — controls access and can edit balances).
+
+DONE:
+- Built as a separate app in casino/ so the CryptoPulse dashboard is untouched.
+  Own Express server on port 8090 (npm run casino). Data in casino/data/db.json
+  (gitignored, created on first run).
+- Login: one form for both roles. Admins get redirected to /admin, customers
+  to the game. Sessions are HMAC-signed cookies (7 days), passwords hashed
+  with scrypt. No self-registration — admin creates every customer account.
+- Slot game "Lucky Reels": 3 reels, 1 payline, bets 1/5/10/25/50/100.
+  Outcome decided SERVER-side with crypto RNG (browser can't cheat).
+  Paytable: 3x diamond x200 ... 2x star x1. Simulated 500k spins:
+  RTP ~91.4%, hit rate ~36% (house keeps ~8.5% long run).
+  Reel spin animation, win flash, paytable panel, recent-spins list.
+- Admin panel (/admin): stats (customers, active, total balance, wagered,
+  house profit, spins), create customer with starting balance, edit balance
+  (set exact or +/- adjust), enable/disable (kicks their session instantly),
+  reset password, view spin history, delete account. Admin can change own
+  password (My account).
+- First run creates admin / ChangeMe123 (printed to console; override with
+  CASINO_ADMIN_PASSWORD). Docs in casino/README.md.
+- Symbols are small hand-drawn inline SVGs (no emoji, no external images).
+  Fonts: Bebas Neue + Inter (Google Fonts).
+- Tested end-to-end: API via curl (login, spins, guards, balance edits,
+  disable flow) and UI via headless Chromium screenshots.
+
+DECISIONS MADE:
+- Virtual credits only, no payment processing — real money would need a
+  gambling license. Admin loads/removes credits by hand.
+- JSON-file storage (fine for a small member list; swap to SQLite if it grows).
+- Casino kept fully separate from the trading dashboard (own folder, own port).
+
+STILL PENDING / NEXT TIME:
+- Nimith to review the look and the paytable numbers (house edge adjustable).
+- Possible next games: blackjack, roulette, crash.
+- Deployment: needs a Node host (Render/Railway/VPS) — Netlify/Vercel static
+  hosting won't run this server. Discuss when ready.
+
+===========================================
 DATE: 6/20/2026 (Session 20 — coin prices show >=5 decimals)
 -------------------------------------------
 ASK: coin prices must show at least 5 digits after the dot (e.g. 0.083375).

@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Golden Spin — Admin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/casino.css?v=1">
+</head>
+<body>
+
+  <div id="admin-screen" class="hidden">
+    <div class="topbar">
+      <div class="brand"><span class="coin"></span>GOLDEN SPIN <span style="color:var(--muted);font-size:14px;letter-spacing:1px;margin-left:6px;">ADMIN</span></div>
+      <div class="topbar-right">
+        <a class="btn btn-sm" href="/">Open game</a>
+        <button id="my-account-btn" class="btn btn-sm">My account</button>
+        <button id="logout-btn" class="btn btn-sm">Log out</button>
+      </div>
+    </div>
+
+    <div class="wrap">
+      <div class="stat-grid" id="stat-grid"></div>
+
+      <div class="admin-grid">
+        <div class="card">
+          <h2>Customers</h2>
+          <div class="table-scroll">
+            <table class="data">
+              <thead>
+                <tr>
+                  <th>Customer</th>
+                  <th>Balance</th>
+                  <th>Wagered</th>
+                  <th>Won</th>
+                  <th>Status</th>
+                  <th>Last login</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="customer-rows"></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="card">
+          <h2>Add customer</h2>
+          <form id="create-form">
+            <label for="c-username">Username</label>
+            <input id="c-username" required placeholder="e.g. sok_dara">
+            <label for="c-name">Display name</label>
+            <input id="c-name" placeholder="Shown in the game (optional)">
+            <label for="c-password">Password</label>
+            <input id="c-password" type="text" required placeholder="At least 6 characters">
+            <label for="c-balance">Starting balance</label>
+            <input id="c-balance" type="number" min="0" step="1" value="0">
+            <button class="btn-gold" type="submit" style="width:100%;margin-top:16px;padding:11px;">Create account</button>
+            <div class="form-error" id="create-error"></div>
+            <div class="form-ok hidden" id="create-ok"></div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- generic modal -->
+  <div id="modal-back" class="modal-back hidden">
+    <div class="card modal" id="modal-body"></div>
+  </div>
+
+  <script src="js/symbols.js?v=1"></script>
+  <script src="js/admin.js?v=1"></script>
+</body>
+</html>

@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Golden Spin</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="css/casino.css?v=1">
+</head>
+<body>
+
+  <!-- ============ LOGIN ============ -->
+  <div id="login-screen" class="login-screen hidden">
+    <div class="card login-card">
+      <div class="brand"><span class="coin"></span>GOLDEN SPIN</div>
+      <div class="tagline">Members only. Ask us for an account.</div>
+      <form id="login-form">
+        <label for="login-username">Username</label>
+        <input id="login-username" autocomplete="username" required>
+        <label for="login-password">Password</label>
+        <input id="login-password" type="password" autocomplete="current-password" required>
+        <button class="btn-gold" type="submit">Log in</button>
+        <div class="form-error" id="login-error"></div>
+      </form>
+    </div>
+  </div>
+
+  <!-- ============ GAME ============ -->
+  <div id="game-screen" class="hidden">
+    <div class="topbar">
+      <div class="brand"><span class="coin"></span>GOLDEN SPIN</div>
+      <div class="topbar-right">
+        <div class="balance-chip">
+          <span class="label">Balance</span>
+          <span class="value" id="balance">0</span>
+        </div>
+        <span id="hello" style="color:var(--muted);font-size:13px;"></span>
+        <a id="admin-link" class="btn btn-sm hidden" href="/admin">Admin panel</a>
+        <button id="logout-btn" class="btn btn-sm">Log out</button>
+      </div>
+    </div>
+
+    <div class="wrap">
+      <div class="game-grid">
+        <div class="card machine">
+          <h1>LUCKY REELS</h1>
+          <div class="reels">
+            <div class="reel" id="reel-0"><div class="strip"></div></div>
+            <div class="reel" id="reel-1"><div class="strip"></div></div>
+            <div class="reel" id="reel-2"><div class="strip"></div></div>
+          </div>
+          <div class="result-line" id="result-line">&nbsp;</div>
+          <div class="bet-row">
+            <span class="label">Bet</span>
+            <span id="bet-buttons"></span>
+          </div>
+          <button class="btn-gold spin-btn" id="spin-btn">SPIN</button>
+        </div>
+
+        <div>
+          <div class="card paytable" style="margin-bottom:20px;">
+            <h2>Paytable</h2>
+            <table id="paytable-body"></table>
+          </div>
+          <div class="card">
+            <h2>Recent spins</h2>
+            <ul class="history-list" id="history-list"></ul>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="js/symbols.js?v=1"></script>
+  <script src="js/slot.js?v=1"></script>
+</body>
+</html>
