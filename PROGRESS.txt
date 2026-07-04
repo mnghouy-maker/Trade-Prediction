@@ -56,6 +56,11 @@ though Auto-Deploy shows "On Commit" — the webhook seems not to fire.
 Told Nimith to use service page > Manual Deploy > "Deploy latest commit"
 and to check Events + that the repo/branch connection looks right.
 
+LATER AGAIN (high bets):
+- Bet ladders extended on both games up to 10,000 (added 500/1K/2K/5K/10K;
+  buttons show K labels). Warned: max slot win is now 2,000,000 credits
+  (10K bet x200 diamonds) — top up balances accordingly.
+
 STILL PENDING / NEXT TIME:
 - Confirm the live site actually updates (Manual Deploy if needed) —
   then verify Fortune God, signup flow, and the new controls.
