@@ -39,8 +39,26 @@ LATER SAME DAY (customer signup + approval queue):
   different amount, double-approve rejected, reject flow. UI screenshots.
 - Pushed to Online-Game main; live site updates itself now.
 
+LATER AGAIN (auto spin + turbo + sound/music):
+- Both games got a control row under the spin button:
+  AUTO (off/10/25/50/endless; spin button becomes STOP with countdown;
+  stops on low balance/errors), TURBO (fast reels + short pauses),
+  SOUND (synth spin/stop/win/fanfare effects), MUSIC (quiet generated
+  lounge loop). All WebAudio — zero audio files. Prefs in localStorage.
+- Fortune God free spins now play themselves out automatically.
+- Music note for Nimith: current loop is generated placeholder music;
+  a real free track from Pixabay Music can replace it later.
+- Tested in headless Chromium: auto ran 10 -> STOP(8) -> stopped clean,
+  turbo spin fine, no JS errors. Pushed to Online-Game main.
+
+DEPLOY ISSUE (unresolved): live site was still on the FIRST deploy even
+though Auto-Deploy shows "On Commit" — the webhook seems not to fire.
+Told Nimith to use service page > Manual Deploy > "Deploy latest commit"
+and to check Events + that the repo/branch connection looks right.
+
 STILL PENDING / NEXT TIME:
-- Nimith to check Fortune God + signup flow on the live site.
+- Confirm the live site actually updates (Manual Deploy if needed) —
+  then verify Fortune God, signup flow, and the new controls.
 - Before real customers: upgrade Render to starter + persistent disk
   (every deploy still wipes accounts on the free plan).
 - Possible next games: blackjack, roulette, crash.
