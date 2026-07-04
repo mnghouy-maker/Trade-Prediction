@@ -25,9 +25,24 @@ DONE TODAY (all in the Online-Game repo now):
 - Pushed to Online-Game main — Render auto-deploys on push.
   WARNING given: free-tier redeploy wipes the database (accounts reset).
 
+LATER SAME DAY (customer signup + approval queue):
+- Confirmed Render Auto-Deploy is ON ("On Commit") — pushes now go live
+  automatically. Walked Nimith through Manual sync for the Fortune God update.
+- NEW: self-service signup. Login page has Log in / Create an account.
+  Signup asks username, name, password, and a REQUESTED starting balance.
+- New accounts start locked ("pending") — cannot log in until approved.
+  Login shows "waiting for approval" message.
+- Admin panel: gold "Waiting for approval" queue (name, requested balance,
+  signup date) + Approve modal (requested amount prefilled, admin can set
+  any amount) + Reject (deletes request). New "Waiting approval" stat tile.
+- Tested: signup, duplicate username, pending login block, approve with
+  different amount, double-approve rejected, reject flow. UI screenshots.
+- Pushed to Online-Game main; live site updates itself now.
+
 STILL PENDING / NEXT TIME:
-- Nimith to check Fortune God on the live site after the auto-deploy.
-- Before real customers: upgrade Render to starter + persistent disk.
+- Nimith to check Fortune God + signup flow on the live site.
+- Before real customers: upgrade Render to starter + persistent disk
+  (every deploy still wipes accounts on the free plan).
 - Possible next games: blackjack, roulette, crash.
 
 ===========================================
