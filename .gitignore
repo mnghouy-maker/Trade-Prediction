@@ -8,4 +8,3 @@ dist/
 .env.local
 .vercel
 .netlify
-casino/data/

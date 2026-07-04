@@ -44,8 +44,16 @@ LATER SAME DAY (deployment prep):
   resets on restart/redeploy. For real customers: starter plan + 1GB disk
   mounted at /data (instructions commented in render.yaml).
 
+LATER AGAIN (moved to its own repo):
+- Nimith asked to move the casino to https://github.com/mnghouy-maker/Online-Game.
+- Done: the whole app now lives at the ROOT of that repo (server.js, public/,
+  render.yaml, its own package.json — run with npm start). Pushed to main.
+- Removed casino/ + render.yaml from this repo so Trade-Prediction stays a
+  pure trading dashboard. The casino work continues in Online-Game from now on.
+
 STILL PENDING / NEXT TIME:
-- Nimith to create the free Render account and deploy (steps given in chat).
+- Nimith to create the free Render account and deploy — the deploy link now
+  points at the Online-Game repo (given in chat).
 - Nimith to review the look and the paytable numbers (house edge adjustable).
 - Possible next games: blackjack, roulette, crash.
 - Before real customers: upgrade Render to starter + persistent disk.
