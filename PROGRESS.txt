@@ -1,4 +1,36 @@
 ===========================================
+DATE: 7/4/2026 (Session 22 — deployed live + second game: Fortune God)
+-------------------------------------------
+DONE TODAY (all in the Online-Game repo now):
+- Nimith created his Render account and deployed via the blueprint —
+  the casino is LIVE (service golden-spin-casino, blueprint "Online Gaming").
+- Explained: customers use the main URL, admin uses /admin (same login form,
+  role decides where you land).
+- Nimith asked to copy a real slot (Caishen's Fortune, link he plays).
+  Can't clone it (their art/name is copyrighted + the URL is blocked from
+  our sandbox), so built an ORIGINAL game in the same style instead:
+- NEW GAME "Fortune God" (games/fortune.js + /fortune page):
+  - 5 reels x 3 rows, 10 paylines, pays left-to-right as multiples of bet
+  - WILD on reels 2-4; 3+ Fortune Coin scatters pay and start 8 free
+    spins with all wins x2, retriggerable
+  - Server-side crypto RNG; tuned by simulating 800k spins:
+    RTP ~94%, hit rate ~22%, free spins ~1 in 150, 50x+ win ~1 in 2500
+  - Red/gold Chinese theme, hand-drawn SVG symbols (ingot, red envelope,
+    firecrackers, jade ring, A/K/Q/J gems), mobile layout tested
+  - Bets 10/25/50/100; bet locked during free spins
+  - Game switcher links between Lucky Reels and Fortune God
+  - Player + admin histories show both games (free spins marked)
+- Tested end to end: API (spin costs/wins, free-spin cycle balance math
+  exact, guards) and UI screenshots desktop + mobile.
+- Pushed to Online-Game main — Render auto-deploys on push.
+  WARNING given: free-tier redeploy wipes the database (accounts reset).
+
+STILL PENDING / NEXT TIME:
+- Nimith to check Fortune God on the live site after the auto-deploy.
+- Before real customers: upgrade Render to starter + persistent disk.
+- Possible next games: blackjack, roulette, crash.
+
+===========================================
 DATE: 7/3/2026 (Session 21 — NEW: casino site with slot game + admin panel)
 -------------------------------------------
 ASK: a casino-style website, first game is a slot machine. Two kinds of login:
