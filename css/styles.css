@@ -1233,3 +1233,15 @@ body.locked { overflow: hidden; }
 .fx-json summary { cursor: pointer; font-size: 12px; color: var(--text-dim); }
 .fx-json pre { background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 12px;
   overflow-x: auto; font-size: 12px; margin-top: 8px; }
+
+/* Forex extracted Tier-data readout */
+.fx-data { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-bottom: 14px; }
+@media (max-width: 760px) { .fx-data { grid-template-columns: 1fr; } }
+.fx-dgrp { background: var(--bg); border: 1px solid var(--border); border-radius: 10px; padding: 12px; }
+.fx-dgrp-h { font-size: 11px; font-weight: 700; color: var(--accent); text-transform: uppercase;
+  letter-spacing: 0.4px; margin-bottom: 8px; }
+.fx-drow { display: flex; justify-content: space-between; gap: 8px; font-size: 12.5px; padding: 4px 0;
+  border-bottom: 1px dashed var(--border); }
+.fx-drow:last-child { border-bottom: none; }
+.fx-drow span { color: var(--text-dim); }
+.fx-drow strong { text-align: right; }

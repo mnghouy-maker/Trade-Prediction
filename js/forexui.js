@@ -92,11 +92,37 @@ CP.forexUI = (function () {
     el("fxDetail").innerHTML =
       head + levels +
       '<div class="fx-tiers">' + t1 + t2 + t3 + "</div>" +
+      dataReadout(id, r._data) +
       '<div class="fx-reason">' + U.escapeHtml(r.reasoning) + "</div>" +
       '<details class="fx-json"><summary>Raw JSON signal</summary><pre>' + U.escapeHtml(json) + "</pre></details>";
   }
   function t1ok(bias) { return bias === "NEUTRAL" ? null : true; }
   function lvl(k, v, c) { return '<div class="fx-lvl"><span>' + k + '</span><strong style="color:' + c + '">' + v + "</strong></div>"; }
+
+  // Extracted Tier 1/2/3 data readout (mirrors the analysis input contract).
+  function dataReadout(id, D) {
+    if (!D) return "";
+    function grp(title, rows) { return '<div class="fx-dgrp"><div class="fx-dgrp-h">' + title + "</div>" + rows + "</div>"; }
+    function row(k, v) { return '<div class="fx-drow"><span>' + k + "</span><strong>" + v + "</strong></div>"; }
+    var pips = function (n) { return Math.round(n) + " pips"; };
+    var t1 = grp("Tier 1 · Macro (D1)",
+      row("Current price", F.fmt(id, D.tier1.price)) +
+      row("200 EMA", F.fmt(id, D.tier1.ema200)) +
+      row("Price vs EMA", D.tier1.relation) +
+      row("Market structure", D.tier1.structure) +
+      row("Macro RSI (14)", D.tier1.macroRSI.toFixed(0)));
+    var t2 = grp("Tier 2 · Structure (H1)",
+      row("Resistance", F.fmt(id, D.tier2.resistance) + " (" + pips(D.tier2.distResPips) + ")") +
+      row("Support", F.fmt(id, D.tier2.support) + " (" + pips(D.tier2.distSupPips) + ")") +
+      row("Order block", D.tier2.orderBlock != null ? F.fmt(id, D.tier2.orderBlock) : "—") +
+      row(D.tier2.volProxy ? "Volatility" : "Volume", D.tier2.volume));
+    var t3 = grp("Tier 3 · Trigger (M15/M5)",
+      row("M15 structure", D.tier3.m15Structure) +
+      row("M5 RSI (14)", D.tier3.m5RSI.toFixed(0)) +
+      row("M5 candle", D.tier3.candle) +
+      row("ATR (14)", D.tier3.atrPips.toFixed(1) + " pips"));
+    return '<div class="fx-data">' + t1 + t2 + t3 + "</div>";
+  }
 
   function selectPair(id, force) {
     F.state.selected = id;
