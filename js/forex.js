@@ -293,21 +293,41 @@ CP.forex = (function () {
       return synth(sym, interval, size);
     });
   }
-  // Deterministic demo candles (no key / fetch failure) so the engine still runs.
+  // Deterministic demo candles (no key / fetch failure). Each pair gets a stable
+  // regime (uptrend / downtrend / range) so the demo actually demonstrates real
+  // BUY / SELL / NO_SIGNAL setups instead of always returning NO_SIGNAL.
   function synth(sym, interval, size) {
     var bases = { "EUR/USD": 1.08, "GBP/USD": 1.27, "USD/JPY": 156, "USD/CAD": 1.36, "AUD/USD": 0.66,
       "USD/CHF": 0.90, "NZD/USD": 0.60, "EUR/GBP": 0.85, "EUR/JPY": 168, "GBP/JPY": 198, "XAU/USD": 2350 };
-    var base = bases[sym] || 1.1, seed = 0; for (var s = 0; s < sym.length; s++) seed += sym.charCodeAt(s) * (s + 1);
-    seed += interval.length * 13;
-    var opens = [], highs = [], lows = [], closes = [], volumes = [], p = base * 0.98, drift = ((seed % 3) - 1) * 0.0006;
+    var base = bases[sym] || 1.1;
+    var hc = 0; for (var s = 0; s < sym.length; s++) hc = (hc * 31 + sym.charCodeAt(s)) >>> 0;
+    var mode = hc % 4;                                   // 0,2 = up · 1 = down · 3 = range
+    var dir = mode === 1 ? -1 : mode === 3 ? 0 : 1;
+    var seed = hc + interval.length * 17;
+    function rnd() { seed = (seed * 9301 + 49297) % 233280; return seed / 233280 - 0.5; }
+    var opens = [], highs = [], lows = [], closes = [], volumes = [];
+    var span = 0.15;                                     // ~15% trend into the current price
+    var start = dir === 0 ? base : base * (1 - dir * span);
     for (var i = 0; i < size; i++) {
-      seed = (seed * 9301 + 49297) % 233280; var r = seed / 233280 - 0.5;
-      var o = p, c = p * (1 + drift + r * 0.006);
+      var frac = size > 1 ? i / (size - 1) : 1;
+      var mid = dir === 0 ? base * (1 + Math.sin(i / 6) * 0.012) : start + (base - start) * frac;
+      var noise = rnd() * 0.0015 * base;
+      var o = i ? closes[i - 1] : mid;
+      var c = mid + noise;
       opens.push(o); closes.push(c);
-      highs.push(Math.max(o, c) * (1 + Math.abs(r) * 0.003));
-      lows.push(Math.min(o, c) * (1 - Math.abs(r) * 0.003));
-      volumes.push(1000 + Math.abs(r) * 4000);
-      p = c;
+      highs.push(Math.max(o, c) + Math.abs(noise) + base * 0.0003);
+      lows.push(Math.min(o, c) - Math.abs(noise) - base * 0.0003);
+      volumes.push(1000 + Math.abs(rnd()) * 50000);
+    }
+    // Force an aligned M5 execution trigger (engulfing) for trending pairs.
+    if (interval === "5min" && dir !== 0) {
+      var n = size - 1, a = closes[n - 2] || closes[n - 1];
+      if (dir > 0) { opens[n - 1] = a * 1.0012; closes[n - 1] = a * 0.9994;
+                     opens[n] = closes[n - 1] * 0.9996; closes[n] = opens[n - 1] * 1.0016; }
+      else { opens[n - 1] = a * 0.9988; closes[n - 1] = a * 1.0006;
+             opens[n] = closes[n - 1] * 1.0004; closes[n] = opens[n - 1] * 0.9984; }
+      highs[n] = Math.max(opens[n], closes[n]) + base * 0.0006; lows[n] = Math.min(opens[n], closes[n]) - base * 0.0006;
+      highs[n - 1] = Math.max(opens[n - 1], closes[n - 1]) + base * 0.0006; lows[n - 1] = Math.min(opens[n - 1], closes[n - 1]) - base * 0.0006;
     }
     return { live: false, opens: opens, highs: highs, lows: lows, closes: closes, volumes: volumes };
   }

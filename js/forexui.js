@@ -15,7 +15,7 @@ CP.forexUI = (function () {
     root.innerHTML =
       '<section class="card">' +
         '<div class="card-head"><h2>Forex Signals · 3-Tier MTF Engine</h2>' +
-          '<span id="fxStatus" class="card-sub">' + (hasKey ? "Live · Twelve Data" : "Demo data — add a free key for live") + "</span></div>" +
+          '<span id="fxStatus" class="card-sub">' + (hasKey ? "Live · Twelve Data" : "Demo · sample signals (add a free key for live)") + "</span></div>" +
         '<p class="card-note">Top-down analysis: <strong>D1</strong> anchor trend → <strong>H1</strong> structure → <strong>M15</strong> trigger. ' +
           'Signals obey strict rules: bias must align across all tiers, entries avoid opposing S/R, stops use 1.5× ATR, and reward:risk must be ≥ 1.5 or it returns NO_SIGNAL.</p>' +
         '<div class="fx-keybar">' +
@@ -150,7 +150,7 @@ CP.forexUI = (function () {
     function next() {
       if (i >= pairs.length) {
         F.state.scanning = false;
-        status.textContent = (live ? "Live · Twelve Data" : "Demo data — add a free key for live");
+        status.textContent = (live ? "Live · Twelve Data" : "Demo · sample signals (add a free key for live)");
         renderGrid(); return;
       }
       var p = pairs[i++];
@@ -165,7 +165,7 @@ CP.forexUI = (function () {
   function wire() {
     el("fxKeySave").addEventListener("click", function () {
       F.setKey(el("fxKey").value);
-      el("fxStatus").textContent = F.getKey() ? "Live · Twelve Data" : "Demo data — add a free key for live";
+      el("fxStatus").textContent = F.getKey() ? "Live · Twelve Data" : "Demo · sample signals (add a free key for live)";
       F.state.cache = {};
       CP.render && CP.render.toast && CP.render.toast(F.getKey() ? "Twelve Data key saved — live forex enabled." : "Key cleared — using demo data.", "bull");
       if (F.state.selected) selectPair(F.state.selected, true);
@@ -181,8 +181,12 @@ CP.forexUI = (function () {
     init: function () { shell(); },
     onOpen: function () {
       shell();
-      // Auto-analyze the default pair the first time the tab is opened.
-      if (!F.state.results[F.state.selected]) selectPair(F.state.selected);
+      if (F.state.results[F.state.selected]) return; // already populated
+      // Demo mode is instant + rate-limit-free: fill the whole grid so the
+      // section clearly works. With a live key, only analyze the selected pair
+      // (keeps within the free-tier request budget; use "Scan all" for the rest).
+      if (!F.getKey()) scanAll();
+      selectPair(F.state.selected);
     },
   };
 })();
