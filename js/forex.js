@@ -1,0 +1,278 @@
+/* Forex / metals multi-timeframe (MTF) signal engine.
+ *
+ * Implements the 3-tier top-down agent spec:
+ *   Tier 1 (D1)  — anchor trend: 200 EMA + HH/HL vs LH/LL → strict directional bias.
+ *   Tier 2 (H1)  — market structure: nearest support/resistance; block entries too
+ *                  close to the opposing level (<= 5 pips).
+ *   Tier 3 (M15) — trigger: RSI bounce, engulfing candle, or CHoCH confirming bias.
+ * Risk: SL = max(1.5*ATR(M15), beyond local swing); RRR >= 1.5 or NO_SIGNAL.
+ *
+ * Data: Twelve Data (free key, intraday forex + XAU/USD, CORS-enabled). Without a
+ * key it renders clearly-labelled demo candles so the UI always works.
+ */
+CP.forex = (function () {
+  var U = CP.util;
+  var I = CP.indicators;
+  var KEY_LS = "cp_td_key";
+
+  var PAIRS = [
+    { id: "EURUSD", sym: "EUR/USD" }, { id: "GBPUSD", sym: "GBP/USD" },
+    { id: "USDJPY", sym: "USD/JPY" }, { id: "USDCAD", sym: "USD/CAD" },
+    { id: "AUDUSD", sym: "AUD/USD" }, { id: "USDCHF", sym: "USD/CHF" },
+    { id: "NZDUSD", sym: "NZD/USD" }, { id: "EURGBP", sym: "EUR/GBP" },
+    { id: "EURJPY", sym: "EUR/JPY" }, { id: "GBPJPY", sym: "GBP/JPY" },
+    { id: "XAUUSD", sym: "XAU/USD" },
+  ];
+
+  var st = { results: {}, cache: {}, selected: "EURUSD", scanning: false, booted: false };
+
+  // ---- helpers ----
+  function getKey() { try { return localStorage.getItem(KEY_LS) || ""; } catch (e) { return ""; } }
+  function setKey(k) { try { localStorage.setItem(KEY_LS, k.trim()); } catch (e) {} }
+  function pipSize(id) { return id.indexOf("JPY") !== -1 ? 0.01 : id.indexOf("XAU") !== -1 ? 0.1 : 0.0001; }
+  function decimals(id) { return id.indexOf("JPY") !== -1 ? 3 : id.indexOf("XAU") !== -1 ? 2 : 5; }
+  function fmt(id, v) { return v == null || isNaN(v) ? "—" : (+v).toFixed(decimals(id)); }
+  function symOf(id) { var p = PAIRS.filter(function (x) { return x.id === id; })[0]; return p ? p.sym : id; }
+
+  // ---- indicators specific to OHLC ----
+  function atr(h, l, c, period) {
+    period = period || 14;
+    var trs = [];
+    for (var i = 1; i < c.length; i++) {
+      trs.push(Math.max(h[i] - l[i], Math.abs(h[i] - c[i - 1]), Math.abs(l[i] - c[i - 1])));
+    }
+    if (!trs.length) return 0;
+    if (trs.length < period) return trs.reduce(function (a, b) { return a + b; }, 0) / trs.length;
+    var a = 0, j;
+    for (j = 0; j < period; j++) a += trs[j];
+    a /= period;
+    for (j = period; j < trs.length; j++) a = (a * (period - 1) + trs[j]) / period;
+    return a;
+  }
+  function pivots(h, l, w) {
+    w = w || 2;
+    var highs = [], lows = [];
+    for (var i = w; i < h.length - w; i++) {
+      var isH = true, isL = true;
+      for (var j = i - w; j <= i + w; j++) {
+        if (h[j] > h[i]) isH = false;
+        if (l[j] < l[i]) isL = false;
+      }
+      if (isH) highs.push({ i: i, v: h[i] });
+      if (isL) lows.push({ i: i, v: l[i] });
+    }
+    return { highs: highs, lows: lows };
+  }
+  // HH/HL vs LH/LL via a recent-window vs prior-window proxy. Robust for clean
+  // trends (which produce no local pivots) as well as choppy structure.
+  function structure(h, l) {
+    var n = h.length, k = Math.min(20, Math.floor(n / 2));
+    if (k < 3) return { hh: false, hl: false, lh: false, ll: false };
+    var recentH = Math.max.apply(null, h.slice(n - k)), priorH = Math.max.apply(null, h.slice(n - 2 * k, n - k));
+    var recentL = Math.min.apply(null, l.slice(n - k)), priorL = Math.min.apply(null, l.slice(n - 2 * k, n - k));
+    return { hh: recentH > priorH, hl: recentL > priorL, lh: recentH < priorH, ll: recentL < priorL };
+  }
+  // Nearest swing S/R strictly around price. When price prints a new extreme with
+  // no level in the way, return a far level (no block, generous TP cap).
+  function nearestSR(h, l, price) {
+    var p = pivots(h, l, 2), res = Infinity, sup = -Infinity;
+    p.highs.forEach(function (x) { if (x.v > price && x.v < res) res = x.v; });
+    p.lows.forEach(function (x) { if (x.v < price && x.v > sup) sup = x.v; });
+    if (res === Infinity) res = price * 1.02;  // no overhead resistance
+    if (sup === -Infinity) sup = price * 0.98; // no support below
+    return { res: res, sup: sup };
+  }
+  function engulf(o, c) {
+    var n = c.length - 1;
+    if (n < 1) return 0;
+    var bull = c[n - 1] < o[n - 1] && c[n] > o[n] && c[n] >= o[n - 1] && o[n] <= c[n - 1];
+    var bear = c[n - 1] > o[n - 1] && c[n] < o[n] && o[n] >= c[n - 1] && c[n] <= o[n - 1];
+    return bull ? 1 : bear ? -1 : 0;
+  }
+  function choch(h, l, price) {
+    var p = pivots(h, l, 2);
+    var lastHigh = p.highs.length ? p.highs[p.highs.length - 1].v : Math.max.apply(null, h);
+    var lastLow = p.lows.length ? p.lows[p.lows.length - 1].v : Math.min.apply(null, l);
+    return price > lastHigh ? 1 : price < lastLow ? -1 : 0;
+  }
+  function ema200(closes) {
+    var e = I.ema(closes, Math.min(200, closes.length));
+    var v = e[e.length - 1];
+    if (v == null || isNaN(v)) v = I.sma(closes, Math.min(200, closes.length));
+    return v;
+  }
+
+  // ============ THE MTF ENGINE ============
+  function buildSignal(id, d1, h1, m15) {
+    var pip = pipSize(id), price = m15.closes[m15.closes.length - 1];
+    var out = {
+      signal: "NO_SIGNAL", pair: id, execution_timeframe: "M15", entry_range: "-",
+      stop_loss: null, take_profit: null, risk_reward_ratio: 0, confidence_score: 1,
+      reasoning: "", _tiers: {}, _live: d1.live && h1.live && m15.live, _price: price,
+    };
+
+    // TIER 1 — anchor trend (D1)
+    var e200 = ema200(d1.closes), s = structure(d1.highs, d1.lows);
+    var bullish = price > e200 && s.hh && s.hl;
+    var bearish = price < e200 && s.lh && s.ll;
+    var tier1 = bullish ? "BULLISH" : bearish ? "BEARISH" : "NEUTRAL";
+    out._tiers.t1 = { bias: tier1, ema200: e200, priceAboveEMA: price > e200, struct: s };
+    if (tier1 === "NEUTRAL") {
+      out.reasoning = "Tier 1 (D1) anchor is unclear — price and 200 EMA / swing structure are not aligned into a clean trend. No directional bias, so no trade is taken.";
+      return out;
+    }
+
+    // TIER 2 — market structure (H1)
+    var sr = nearestSR(h1.highs, h1.lows, price);
+    var distRes = (sr.res - price) / pip, distSup = (price - sr.sup) / pip;
+    out._tiers.t2 = { support: sr.sup, resistance: sr.res, distResPips: distRes, distSupPips: distSup };
+    if (tier1 === "BULLISH" && distRes <= 5) {
+      out.reasoning = "Tier 1 is bullish but price is within 5 pips of H1 resistance (" + fmt(id, sr.res) + "). Buying into resistance is blocked by the rules.";
+      return out;
+    }
+    if (tier1 === "BEARISH" && distSup <= 5) {
+      out.reasoning = "Tier 1 is bearish but price is sitting on H1 support (" + fmt(id, sr.sup) + "). Selling into support is blocked by the rules.";
+      return out;
+    }
+
+    // TIER 3 — trigger (M15)
+    var rsi = I.rsi(m15.closes, 14) || 50, eg = engulf(m15.opens, m15.closes), ch = choch(m15.highs, m15.lows, price);
+    var trigs = [];
+    if (tier1 === "BULLISH") {
+      if (rsi < 40) trigs.push("RSI bounce (" + rsi.toFixed(0) + ")");
+      if (eg === 1) trigs.push("bullish engulfing");
+      if (ch === 1) trigs.push("bullish CHoCH");
+    } else {
+      if (rsi > 60) trigs.push("RSI rejection (" + rsi.toFixed(0) + ")");
+      if (eg === -1) trigs.push("bearish engulfing");
+      if (ch === -1) trigs.push("bearish CHoCH");
+    }
+    out._tiers.t3 = { rsi: rsi, engulf: eg, choch: ch, triggers: trigs };
+    if (!trigs.length) {
+      out.reasoning = "Tier 1/2 align " + tier1.toLowerCase() + ", but the M15 trigger tier shows no confirmation (no RSI bounce, engulfing, or CHoCH). Waiting for a clean micro-entry.";
+      return out;
+    }
+
+    // RISK — SL from 1.5*ATR or structural swing; TP for RRR >= 1.5 capped by H1 level
+    var atrM15 = atr(m15.highs, m15.lows, m15.closes, 14);
+    var lastLows = m15.lows.slice(-10), lastHighs = m15.highs.slice(-10);
+    var side = tier1 === "BULLISH" ? "long" : "short";
+    var slDist, stop, cap, avail, tp, rr;
+    if (side === "long") {
+      slDist = Math.max(1.5 * atrM15, price - Math.min.apply(null, lastLows));
+      stop = price - slDist; cap = sr.res; avail = cap - price;
+      if (slDist <= 0 || avail / slDist < 1.5) { out.reasoning = tooTightMsg(tier1, id, sr.res); return out; }
+      tp = price + Math.min(2 * slDist, avail - pip); rr = (tp - price) / slDist;
+    } else {
+      slDist = Math.max(1.5 * atrM15, Math.max.apply(null, lastHighs) - price);
+      stop = price + slDist; cap = sr.sup; avail = price - cap;
+      if (slDist <= 0 || avail / slDist < 1.5) { out.reasoning = tooTightMsg(tier1, id, sr.sup); return out; }
+      tp = price - Math.min(2 * slDist, avail - pip); rr = (price - tp) / slDist;
+    }
+    if (rr < 1.5) { out.reasoning = tooTightMsg(tier1, id, side === "long" ? sr.res : sr.sup); return out; }
+
+    // Confidence 1..5
+    var conf = 2;
+    if (rr >= 2) conf++;
+    if (trigs.length >= 2) conf++;
+    var clearance = side === "long" ? distRes : distSup;
+    if (clearance > 15) conf++;
+    conf = Math.max(1, Math.min(5, conf));
+
+    var buf = 0.15 * atrM15;
+    out.signal = side === "long" ? "BUY" : "SELL";
+    out.entry_range = fmt(id, price - buf) + " - " + fmt(id, price + buf);
+    out.stop_loss = +fmt(id, stop);
+    out.take_profit = +fmt(id, tp);
+    out.risk_reward_ratio = +rr.toFixed(2);
+    out.confidence_score = conf;
+    out.reasoning = "D1 anchor is " + tier1.toLowerCase() + " (price " + (price > e200 ? "above" : "below") +
+      " 200 EMA with " + (side === "long" ? "higher highs/lows" : "lower highs/lows") + "), and H1 structure leaves " +
+      Math.round(clearance) + " pips to the opposing level. M15 confirms with " + trigs.join(" + ") +
+      ", giving a " + rr.toFixed(1) + ":1 setup.";
+    return out;
+  }
+  function tooTightMsg(tier1, id, level) {
+    return "Tier 1/2/3 align " + tier1.toLowerCase() + ", but a 1:1.5 reward cannot be reached before the H1 level at " +
+      fmt(id, level) + ". Per the risk rules, output is NO_SIGNAL.";
+  }
+
+  // ============ DATA (Twelve Data) ============
+  function fetchTD(url) {
+    var ctrl = new AbortController();
+    var t = setTimeout(function () { ctrl.abort(); }, 13000);
+    return fetch(url, { signal: ctrl.signal }).then(function (r) {
+      clearTimeout(t);
+      return r.json().then(function (b) { return { status: r.status, body: b }; });
+    });
+  }
+  function series(interval, sym, size) {
+    var key = getKey();
+    if (!key) return Promise.resolve(synth(sym, interval, size));
+    var url = "https://api.twelvedata.com/time_series?symbol=" + encodeURIComponent(sym) +
+      "&interval=" + interval + "&outputsize=" + size + "&apikey=" + encodeURIComponent(key);
+    return fetchTD(url).then(function (res) {
+      var b = res.body || {};
+      if (b.status === "error" || res.status === 429) {
+        if (String(b.code) === "429" || res.status === 429 || /limit/i.test(b.message || "")) {
+          var e = new Error("ratelimit"); e.rate = true; throw e;
+        }
+        throw new Error(b.message || "error");
+      }
+      if (!b.values || !b.values.length) throw new Error("no data");
+      var v = b.values.slice().reverse();
+      return {
+        live: true,
+        opens: v.map(function (x) { return +x.open; }),
+        highs: v.map(function (x) { return +x.high; }),
+        lows: v.map(function (x) { return +x.low; }),
+        closes: v.map(function (x) { return +x.close; }),
+      };
+    }).catch(function (e) {
+      if (e.rate) throw e;
+      return synth(sym, interval, size);
+    });
+  }
+  // Deterministic demo candles (no key / fetch failure) so the engine still runs.
+  function synth(sym, interval, size) {
+    var bases = { "EUR/USD": 1.08, "GBP/USD": 1.27, "USD/JPY": 156, "USD/CAD": 1.36, "AUD/USD": 0.66,
+      "USD/CHF": 0.90, "NZD/USD": 0.60, "EUR/GBP": 0.85, "EUR/JPY": 168, "GBP/JPY": 198, "XAU/USD": 2350 };
+    var base = bases[sym] || 1.1, seed = 0; for (var s = 0; s < sym.length; s++) seed += sym.charCodeAt(s) * (s + 1);
+    seed += interval.length * 13;
+    var opens = [], highs = [], lows = [], closes = [], p = base * 0.98, drift = ((seed % 3) - 1) * 0.0006;
+    for (var i = 0; i < size; i++) {
+      seed = (seed * 9301 + 49297) % 233280; var r = seed / 233280 - 0.5;
+      var o = p, c = p * (1 + drift + r * 0.006);
+      opens.push(o); closes.push(c);
+      highs.push(Math.max(o, c) * (1 + Math.abs(r) * 0.003));
+      lows.push(Math.min(o, c) * (1 - Math.abs(r) * 0.003));
+      p = c;
+    }
+    return { live: false, opens: opens, highs: highs, lows: lows, closes: closes };
+  }
+
+  // Analyze one pair: fetch D1/H1/M15 then run the engine. Cached ~90s.
+  function analyze(id, opts) {
+    opts = opts || {};
+    var c = st.cache[id];
+    if (!opts.force && c && Date.now() - c.t < 90000) {
+      st.results[id] = c.res; return Promise.resolve(c.res);
+    }
+    var sym = symOf(id);
+    return series("1day", sym, 220)
+      .then(function (d1) { return series("1h", sym, 160).then(function (h1) { return { d1: d1, h1: h1 }; }); })
+      .then(function (o) { return series("15min", sym, 160).then(function (m15) { return { d1: o.d1, h1: o.h1, m15: m15 }; }); })
+      .then(function (o) {
+        var res = buildSignal(id, o.d1, o.h1, o.m15);
+        st.results[id] = res; st.cache[id] = { t: Date.now(), res: res };
+        return res;
+      });
+  }
+
+  return {
+    PAIRS: PAIRS, getKey: getKey, setKey: setKey, analyze: analyze, buildSignal: buildSignal,
+    symOf: symOf, fmt: fmt, state: st,
+    init: function () { CP.forexUI && CP.forexUI.init(); },
+    onOpen: function () { CP.forexUI && CP.forexUI.onOpen(); },
+  };
+})();

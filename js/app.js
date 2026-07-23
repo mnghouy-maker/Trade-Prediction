@@ -414,6 +414,8 @@
     });
     // Only run the live Binance streams while the Trade tab is open.
     if (CP.live) { if (name === "trade") CP.live.activate(); else CP.live.deactivate(); }
+    // Lazy-init / auto-analyze the Forex tab on first open.
+    if (name === "forex" && CP.forex) CP.forex.onOpen();
   }
 
   function wireTabNav() {
@@ -593,6 +595,7 @@
     start._booted = true;
     wire();
     if (CP.paper) CP.paper.init();       // restore any saved paper account
+    if (CP.forex) CP.forex.init();       // build the Forex tab shell (behind the auth gate)
     tickStatus();                       // show "Connecting…" immediately
     setInterval(tickStatus, 1000);      // live clock — set FIRST so it always ticks
     setInterval(priceTick, 1000);       // live Binance prices every second
