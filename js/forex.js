@@ -24,7 +24,7 @@ CP.forex = (function () {
     { id: "XAUUSD", sym: "XAU/USD" },
   ];
 
-  var st = { results: {}, cache: {}, selected: "EURUSD", scanning: false, booted: false };
+  var st = { results: {}, cache: {}, selected: "EURUSD", scanning: false, booted: false, proxy: null };
 
   // ---- helpers ----
   function getKey() { try { return localStorage.getItem(KEY_LS) || ""; } catch (e) { return ""; } }
@@ -258,7 +258,7 @@ CP.forex = (function () {
   // ============ DATA (Twelve Data) ============
   function fetchTD(url) {
     var ctrl = new AbortController();
-    var t = setTimeout(function () { ctrl.abort(); }, 8000);
+    var t = setTimeout(function () { ctrl.abort(); }, 6000);
     return fetch(url, { signal: ctrl.signal }).then(function (r) {
       clearTimeout(t);
       return r.json().then(function (b) { return { status: r.status, body: b }; });
@@ -312,12 +312,19 @@ CP.forex = (function () {
     var y = YMAP[interval] || YMAP["1day"];
     var yurl = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(yahooSymbol(id)) +
       "?interval=" + y.i + "&range=" + y.r;
-    var i = 0;
-    function tryNext() {
-      if (i >= PROXIES.length) return Promise.reject(new Error("all proxies failed"));
-      return fetchTD(PROXIES[i++](yurl)).then(function (res) { return parseYahoo(res.body); }).catch(tryNext);
-    }
-    return tryNext();
+    function via(idx) { return fetchTD(PROXIES[idx](yurl)).then(function (res) { return parseYahoo(res.body); }); }
+    // Fast path: reuse the proxy that worked last time (single request).
+    var pref = (st.proxy != null) ? via(st.proxy) : Promise.reject();
+    return pref.catch(function () {
+      // Otherwise race every proxy at once; first valid response wins and is remembered.
+      return new Promise(function (resolve, reject) {
+        var pending = PROXIES.length, done = false;
+        PROXIES.forEach(function (_, idx) {
+          via(idx).then(function (data) { if (!done) { done = true; st.proxy = idx; resolve(data); } })
+            .catch(function () { if (--pending === 0 && !done) reject(new Error("all proxies failed")); });
+        });
+      });
+    });
   }
 
   // Resolve one series: Twelve Data (if keyed) → Yahoo (keyless live) → demo.
