@@ -1206,7 +1206,7 @@ body.locked { overflow: hidden; }
 }
 .fx-card:hover { border-color: var(--accent); transform: translateY(-1px); }
 .fx-card.sel { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
-.fx-sym { font-weight: 700; font-size: 14px; }
+.fx-sym { font-weight: 700; font-size: 14px; color: var(--text); }
 .fx-sub { font-size: 11px; color: var(--text-dim); }
 
 .fx-signal-head { display: flex; flex-direction: column; align-items: center; gap: 2px;
@@ -1254,3 +1254,8 @@ body.locked { overflow: hidden; }
 .fx-adv[open] > summary { color: var(--text); margin-bottom: 8px; }
 
 .fx-pip { font-size: 11px; color: var(--text-faint); font-weight: 500; }
+
+/* Forex pair card: ensure text is readable (was inheriting default black) */
+.fx-card { color: var(--text); }
+.fx-card .fx-sym { color: var(--text); }
+.fx-name { font-size: 11px; color: var(--text-dim); margin-top: -2px; }

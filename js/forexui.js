@@ -7,6 +7,13 @@ CP.forexUI = (function () {
   function el(id) { return document.getElementById(id); }
   function sigClass(s) { return s === "BUY" ? "bull" : s === "SELL" ? "bear" : "neutral"; }
 
+  var NAMES = {
+    EURUSD: "Euro / US Dollar", GBPUSD: "Pound / US Dollar", USDJPY: "US Dollar / Yen",
+    USDCAD: "US Dollar / Canadian", AUDUSD: "Aussie / US Dollar", USDCHF: "US Dollar / Franc",
+    NZDUSD: "Kiwi / US Dollar", EURGBP: "Euro / Pound", EURJPY: "Euro / Yen",
+    GBPJPY: "Pound / Yen", XAUUSD: "Gold / US Dollar",
+  };
+
   function shell() {
     var root = el("forexRoot");
     if (!root || root._built) return;
@@ -48,8 +55,10 @@ CP.forexUI = (function () {
       var sub = r ? (r.signal === "NO_SIGNAL" ? "no setup" : "conf " + r.confidence_score + "/5 · " + r.risk_reward_ratio + "R")
         : "tap to analyze";
       var sel = p.id === F.state.selected ? " sel" : "";
+      var nm = NAMES[p.id] || "";
       return '<button class="fx-card' + sel + '" data-pair="' + p.id + '">' +
-        '<span class="fx-sym">' + p.sym + "</span>" + badge +
+        '<span class="fx-sym">' + p.sym + "</span>" +
+        (nm ? '<span class="fx-name">' + nm + "</span>" : "") + badge +
         '<span class="fx-sub">' + sub + "</span></button>";
     }).join("");
   }
