@@ -1271,3 +1271,7 @@ body.locked { overflow: hidden; }
   margin-bottom: 14px;
 }
 .fx-demo-warn strong { color: #fff; }
+
+/* Forex: embedded TradingView live chart */
+.fx-chart { height: 460px; width: 100%; }
+.fx-chart iframe { border-radius: 8px; }

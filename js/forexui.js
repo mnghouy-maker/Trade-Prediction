@@ -13,6 +13,37 @@ CP.forexUI = (function () {
     NZDUSD: "Kiwi / US Dollar", EURGBP: "Euro / Pound", EURJPY: "Euro / Yen",
     GBPJPY: "Pound / Yen", XAUUSD: "Gold / US Dollar",
   };
+  var TV_SYMBOLS = {
+    EURUSD: "FX:EURUSD", GBPUSD: "FX:GBPUSD", USDJPY: "FX:USDJPY", USDCAD: "FX:USDCAD",
+    AUDUSD: "FX:AUDUSD", USDCHF: "FX:USDCHF", NZDUSD: "FX:NZDUSD", EURGBP: "FX:EURGBP",
+    EURJPY: "FX:EURJPY", GBPJPY: "FX:GBPJPY", XAUUSD: "OANDA:XAUUSD",
+  };
+
+  // Load TradingView's embed library once, then (re)build the chart for a pair.
+  function ensureTV(cb) {
+    if (window.TradingView) return cb();
+    var ex = document.getElementById("tvjs");
+    if (ex) { ex.addEventListener("load", cb); return; }
+    var s = document.createElement("script");
+    s.id = "tvjs"; s.src = "https://s3.tradingview.com/tv.js"; s.onload = cb;
+    document.head.appendChild(s);
+  }
+  function renderChart(id) {
+    var host = el("fxChart"); if (!host) return;
+    var titleEl = el("fxChartTitle"); if (titleEl) titleEl.textContent = "Live chart · " + F.symOf(id);
+    ensureTV(function () {
+      if (F.state.selected !== id) return; // user moved on
+      host.innerHTML = "";
+      try {
+        new window.TradingView.widget({
+          container_id: "fxChart", symbol: TV_SYMBOLS[id] || ("FX:" + id),
+          interval: "15", timezone: "Etc/UTC", theme: "dark", style: "1", locale: "en",
+          autosize: true, hide_side_toolbar: false, allow_symbol_change: true, withdateranges: true,
+          studies: ["STD;EMA"], details: false,
+        });
+      } catch (e) { host.innerHTML = '<div class="skeleton">Chart unavailable.</div>'; }
+    });
+  }
 
   function shell() {
     var root = el("forexRoot");
@@ -38,6 +69,11 @@ CP.forexUI = (function () {
         '<div class="card-head"><h2>Pairs</h2>' +
           '<button id="fxScan" class="btn btn-sm">Scan all</button></div>' +
         '<div id="fxGrid" class="fx-grid"></div>' +
+      "</section>" +
+      '<section class="card" id="fxChartCard">' +
+        '<div class="card-head"><h2 id="fxChartTitle">Live chart</h2>' +
+          '<span class="card-sub">TradingView · compare the signal to live price</span></div>' +
+        '<div id="fxChart" class="fx-chart"><div class="skeleton">Select a pair to load its live chart.</div></div>' +
       "</section>" +
       '<section class="card" id="fxDetailCard">' +
         '<div class="card-head"><h2 id="fxDetailTitle">Select a pair</h2>' +
@@ -138,6 +174,7 @@ CP.forexUI = (function () {
 
   function selectPair(id, force) {
     F.state.selected = id;
+    renderChart(id);
     // Show an instant result so a signal is never blank, then upgrade to live.
     if (!F.state.results[id]) F.state.results[id] = F.demoResult(id);
     renderGrid(); renderDetail(id);
