@@ -1245,3 +1245,10 @@ body.locked { overflow: hidden; }
 .fx-drow:last-child { border-bottom: none; }
 .fx-drow span { color: var(--text-dim); }
 .fx-drow strong { text-align: right; }
+
+/* Forex: optional/advanced key section */
+.fx-adv { margin-top: 6px; }
+.fx-adv > summary { cursor: pointer; font-size: 12px; color: var(--text-dim); list-style: none; padding: 4px 0; }
+.fx-adv > summary::-webkit-details-marker { display: none; }
+.fx-adv > summary:hover { color: var(--text); }
+.fx-adv[open] > summary { color: var(--text); margin-bottom: 8px; }

@@ -11,18 +11,21 @@ CP.forexUI = (function () {
     var root = el("forexRoot");
     if (!root || root._built) return;
     root._built = true;
-    var hasKey = !!F.getKey();
     root.innerHTML =
       '<section class="card">' +
         '<div class="card-head"><h2>Forex Signals · 3-Tier MTF Engine</h2>' +
-          '<span id="fxStatus" class="card-sub">' + (hasKey ? "Live · Twelve Data" : "Demo · sample signals (add a free key for live)") + "</span></div>" +
+          '<span id="fxStatus" class="card-sub">Loading live feed…</span></div>' +
         '<p class="card-note">Top-down analysis: <strong>D1</strong> anchor trend → <strong>H1</strong> structure → <strong>M15</strong> trigger. ' +
-          'Signals obey strict rules: bias must align across all tiers, entries avoid opposing S/R, stops use 1.5× ATR, and reward:risk must be ≥ 1.5 or it returns NO_SIGNAL.</p>' +
-        '<div class="fx-keybar">' +
-          '<input id="fxKey" type="password" placeholder="Twelve Data API key (free at twelvedata.com)" value="' + U.escapeHtml(F.getKey()) + '" />' +
-          '<button id="fxKeySave" class="btn btn-sm btn-primary">Save key</button>' +
-          '<a href="https://twelvedata.com/pricing" target="_blank" rel="noopener" class="fx-keylink">Get a free key →</a>' +
-        "</div>" +
+          'Signals obey strict rules: bias must align across all tiers, entries avoid opposing S/R, stops use 1.5× ATR, and reward:risk must be ≥ 1.5 or it returns NO_SIGNAL. ' +
+          '<strong>Live prices for all 11 pairs — no API key or sign-up needed.</strong></p>' +
+        '<details class="fx-adv"><summary>Advanced · use your own data key (optional)</summary>' +
+          '<div class="fx-keybar">' +
+            '<input id="fxKey" type="password" placeholder="Twelve Data API key (optional)" value="' + U.escapeHtml(F.getKey()) + '" />' +
+            '<button id="fxKeySave" class="btn btn-sm btn-primary">Save</button>' +
+            '<a href="https://twelvedata.com/pricing" target="_blank" rel="noopener" class="fx-keylink">Twelve Data →</a>' +
+          "</div>" +
+          '<p class="card-note" style="margin:8px 0 0">Only if you want a dedicated feed — the dashboard works fully without it.</p>' +
+        "</details>" +
       "</section>" +
       '<section class="card">' +
         '<div class="card-head"><h2>Pairs</h2>' +
@@ -143,10 +146,10 @@ CP.forexUI = (function () {
     var st = el("fxStatus"); if (!st) return;
     var res = F.state.results, ids = Object.keys(res);
     var live = ids.filter(function (k) { return res[k]._live; }).length;
-    if (!ids.length) { st.textContent = F.getKey() ? "Live · Twelve Data" : "Fetching live feed…"; return; }
-    if (live === 0) st.textContent = "Demo · live feed unavailable (try again / add a key)";
+    if (!ids.length) { st.textContent = "Loading live feed…"; return; }
+    if (live === 0) st.textContent = "Sample data · live feed unreachable — press Scan all to retry";
     else if (live === ids.length) st.textContent = F.getKey() ? "Live · Twelve Data" : "Live · free market feed";
-    else st.textContent = "Live · " + live + "/" + ids.length + " pairs (rest demo)";
+    else st.textContent = "Live · " + live + "/" + ids.length + " pairs";
   }
 
   // Sequential scan with spacing so we don't hammer the data source.
@@ -173,9 +176,10 @@ CP.forexUI = (function () {
   function wire() {
     el("fxKeySave").addEventListener("click", function () {
       F.setKey(el("fxKey").value);
-      el("fxStatus").textContent = F.getKey() ? "Live · Twelve Data" : "Demo · sample signals (add a free key for live)";
+      el("fxStatus").textContent = "Reloading…";
       F.state.cache = {};
-      CP.render && CP.render.toast && CP.render.toast(F.getKey() ? "Twelve Data key saved — live forex enabled." : "Key cleared — using demo data.", "bull");
+      CP.render && CP.render.toast && CP.render.toast(F.getKey() ? "Data key saved." : "Using the free market feed.", "bull");
+      scanAll();
       if (F.state.selected) selectPair(F.state.selected, true);
     });
     el("fxGrid").addEventListener("click", function (e) {
