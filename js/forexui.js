@@ -126,18 +126,15 @@ CP.forexUI = (function () {
 
   function selectPair(id, force) {
     F.state.selected = id;
-    renderGrid();
+    // Show an instant result so a signal is never blank, then upgrade to live.
+    if (!F.state.results[id]) F.state.results[id] = F.demoResult(id);
+    renderGrid(); renderDetail(id);
     el("fxDetailCard").scrollIntoView({ behavior: "smooth", block: "nearest" });
-    el("fxDetailTitle").textContent = F.symOf(id);
-    el("fxDetail").innerHTML = '<div class="skeleton">Running D1 → H1 → M15 analysis…</div>';
     F.analyze(id, { force: force }).then(function () {
       renderGrid(); renderDetail(id); setStatus();
     }).catch(function (e) {
-      if (e && e.rate) {
-        el("fxDetail").innerHTML = '<div class="skeleton">Twelve Data rate limit hit (free tier = 8/min). Wait a few seconds and try again.</div>';
-      } else {
-        el("fxDetail").innerHTML = '<div class="skeleton">Could not load data for ' + F.symOf(id) + ".</div>";
-      }
+      if (e && e.rate) CP.render && CP.render.toast && CP.render.toast("Twelve Data rate limit (8/min) — showing cached/demo.", "bear");
+      renderDetail(id); setStatus();
     });
   }
 
@@ -157,13 +154,16 @@ CP.forexUI = (function () {
     if (F.state.scanning) return;
     F.state.scanning = true;
     var keyed = !!F.getKey();
-    var delay = keyed ? 8000 : 1400;               // TD free = 8/min; keyless Yahoo proxy is gentler
+    var delay = keyed ? 8000 : 900;                // TD free = 8/min; keyless Yahoo proxy is gentler
     var status = el("fxStatus"), pairs = F.PAIRS.slice(), i = 0;
+    // Fill the whole grid instantly with demo results, then upgrade each to live.
+    pairs.forEach(function (p) { if (!F.state.results[p.id]) F.state.results[p.id] = F.demoResult(p.id); });
+    renderGrid();
     function next() {
       if (i >= pairs.length) { F.state.scanning = false; setStatus(); renderGrid(); return; }
       var p = pairs[i++];
-      status.textContent = "Analyzing " + p.sym + " (" + i + "/" + pairs.length + ")…";
-      F.analyze(p.id).then(function () { renderGrid(); })
+      status.textContent = "Loading live · " + p.sym + " (" + i + "/" + pairs.length + ")…";
+      F.analyze(p.id).then(function () { renderGrid(); if (p.id === F.state.selected) renderDetail(p.id); })
         .catch(function () {})
         .then(function () { setTimeout(next, delay); });
     }

@@ -259,7 +259,7 @@ CP.forex = (function () {
   // ============ DATA (Twelve Data) ============
   function fetchTD(url) {
     var ctrl = new AbortController();
-    var t = setTimeout(function () { ctrl.abort(); }, 13000);
+    var t = setTimeout(function () { ctrl.abort(); }, 8000);
     return fetch(url, { signal: ctrl.signal }).then(function (r) {
       clearTimeout(t);
       return r.json().then(function (b) { return { status: r.status, body: b }; });
@@ -363,20 +363,28 @@ CP.forex = (function () {
       st.results[id] = c.res; return Promise.resolve(c.res);
     }
     var sym = symOf(id);
-    return series("1day", sym, 220)
-      .then(function (d1) { return series("1h", sym, 160).then(function (h1) { return { d1: d1, h1: h1 }; }); })
-      .then(function (o) { return series("15min", sym, 160).then(function (m15) { o.m15 = m15; return o; }); })
-      .then(function (o) { return series("5min", sym, 160).then(function (m5) { o.m5 = m5; return o; }); })
-      .then(function (o) {
-        var res = buildSignal(id, o.d1, o.h1, o.m15, o.m5);
-        st.results[id] = res; st.cache[id] = { t: Date.now(), res: res };
-        return res;
-      });
+    // Fetch the four timeframes in parallel (each falls back TD→Yahoo→demo).
+    return Promise.all([
+      series("1day", sym, 220), series("1h", sym, 160),
+      series("15min", sym, 160), series("5min", sym, 160),
+    ]).then(function (a) {
+      var res = buildSignal(id, a[0], a[1], a[2], a[3]);
+      st.results[id] = res; st.cache[id] = { t: Date.now(), res: res };
+      return res;
+    });
+  }
+
+  // Instant offline result (all-demo candles) so a signal shows immediately
+  // while the live fetch runs in the background.
+  function demoResult(id) {
+    var sym = symOf(id);
+    return buildSignal(id, synth(sym, "1day", 220), synth(sym, "1h", 160),
+      synth(sym, "15min", 160), synth(sym, "5min", 160));
   }
 
   return {
     PAIRS: PAIRS, getKey: getKey, setKey: setKey, analyze: analyze, buildSignal: buildSignal,
-    symOf: symOf, fmt: fmt, state: st,
+    demoResult: demoResult, symOf: symOf, fmt: fmt, state: st,
     init: function () { CP.forexUI && CP.forexUI.init(); },
     onOpen: function () { CP.forexUI && CP.forexUI.onOpen(); },
   };
