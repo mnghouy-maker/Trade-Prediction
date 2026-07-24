@@ -97,18 +97,11 @@ CP.forexUI = (function () {
       "</div>";
     }
 
-    var json = JSON.stringify({
-      signal: r.signal, pair: r.pair, execution_timeframe: r.execution_timeframe,
-      entry_range: r.entry_range, stop_loss: r.stop_loss, take_profit: r.take_profit,
-      risk_reward_ratio: r.risk_reward_ratio, confidence_score: r.confidence_score, reasoning: r.reasoning,
-    }, null, 2);
-
     el("fxDetail").innerHTML =
       head + levels +
       '<div class="fx-tiers">' + t1 + t2 + t3 + "</div>" +
       dataReadout(id, r._data) +
-      '<div class="fx-reason">' + U.escapeHtml(r.reasoning) + "</div>" +
-      '<details class="fx-json"><summary>Raw JSON signal</summary><pre>' + U.escapeHtml(json) + "</pre></details>";
+      '<div class="fx-reason">' + U.escapeHtml(r.reasoning) + "</div>";
   }
   function t1ok(bias) { return bias === "NEUTRAL" ? null : true; }
   function lvl(k, v, c) { return '<div class="fx-lvl"><span>' + k + '</span><strong style="color:' + c + '">' + v + "</strong></div>"; }
