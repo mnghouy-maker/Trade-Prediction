@@ -265,11 +265,10 @@ CP.forex = (function () {
       return r.json().then(function (b) { return { status: r.status, body: b }; });
     });
   }
-  function series(interval, sym, size) {
-    var key = getKey();
-    if (!key) return Promise.resolve(synth(sym, interval, size));
+  // Twelve Data (keyed). Throws on error; sets e.rate on a 429 so callers pause.
+  function tdSeries(interval, sym, size) {
     var url = "https://api.twelvedata.com/time_series?symbol=" + encodeURIComponent(sym) +
-      "&interval=" + interval + "&outputsize=" + size + "&apikey=" + encodeURIComponent(key);
+      "&interval=" + interval + "&outputsize=" + size + "&apikey=" + encodeURIComponent(getKey());
     return fetchTD(url).then(function (res) {
       var b = res.body || {};
       if (b.status === "error" || res.status === 429) {
@@ -280,18 +279,42 @@ CP.forex = (function () {
       }
       if (!b.values || !b.values.length) throw new Error("no data");
       var v = b.values.slice().reverse();
-      return {
-        live: true,
-        opens: v.map(function (x) { return +x.open; }),
-        highs: v.map(function (x) { return +x.high; }),
-        lows: v.map(function (x) { return +x.low; }),
-        closes: v.map(function (x) { return +x.close; }),
-        volumes: v.map(function (x) { return +(x.volume || 0); }),
-      };
-    }).catch(function (e) {
-      if (e.rate) throw e;
-      return synth(sym, interval, size);
+      return { live: true,
+        opens: v.map(function (x) { return +x.open; }), highs: v.map(function (x) { return +x.high; }),
+        lows: v.map(function (x) { return +x.low; }), closes: v.map(function (x) { return +x.close; }),
+        volumes: v.map(function (x) { return +(x.volume || 0); }) };
     });
+  }
+
+  // Keyless live source: Yahoo Finance intraday via a public CORS proxy.
+  var YMAP = { "1day": { i: "1d", r: "2y" }, "1h": { i: "1h", r: "60d" }, "15min": { i: "15m", r: "1mo" }, "5min": { i: "5m", r: "5d" } };
+  function yahooSymbol(id) { return id === "XAUUSD" ? "GC=F" : id + "=X"; }
+  function yahoo(interval, id) {
+    var y = YMAP[interval] || YMAP["1day"];
+    var yurl = "https://query1.finance.yahoo.com/v8/finance/chart/" + encodeURIComponent(yahooSymbol(id)) +
+      "?interval=" + y.i + "&range=" + y.r;
+    var url = "https://api.allorigins.win/raw?url=" + encodeURIComponent(yurl);
+    return fetchTD(url).then(function (res) {
+      var b = res.body || {};
+      var r = b.chart && b.chart.result && b.chart.result[0];
+      if (!r || !r.indicators || !r.indicators.quote) throw new Error("no yahoo");
+      var q = r.indicators.quote[0], ts = r.timestamp || [];
+      var o = [], h = [], l = [], c = [], vv = [];
+      for (var i = 0; i < ts.length; i++) {
+        if (q.close[i] == null || q.open[i] == null) continue;
+        o.push(+q.open[i]); h.push(+q.high[i]); l.push(+q.low[i]); c.push(+q.close[i]); vv.push(+(q.volume[i] || 0));
+      }
+      if (c.length < 30) throw new Error("short");
+      return { live: true, opens: o, highs: h, lows: l, closes: c, volumes: vv };
+    });
+  }
+
+  // Resolve one series: Twelve Data (if keyed) → Yahoo (keyless live) → demo.
+  function series(interval, sym, size) {
+    var id = sym.replace("/", "");
+    var p = getKey() ? tdSeries(interval, sym, size) : Promise.reject({ soft: true });
+    return p.catch(function (e) { if (e && e.rate) throw e; return yahoo(interval, id); })
+            .catch(function (e) { if (e && e.rate) throw e; return synth(sym, interval, size); });
   }
   // Deterministic demo candles (no key / fetch failure). Each pair gets a stable
   // regime (uptrend / downtrend / range) so the demo actually demonstrates real

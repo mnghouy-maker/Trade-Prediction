@@ -131,7 +131,7 @@ CP.forexUI = (function () {
     el("fxDetailTitle").textContent = F.symOf(id);
     el("fxDetail").innerHTML = '<div class="skeleton">Running D1 → H1 → M15 analysis…</div>';
     F.analyze(id, { force: force }).then(function () {
-      renderGrid(); renderDetail(id);
+      renderGrid(); renderDetail(id); setStatus();
     }).catch(function (e) {
       if (e && e.rate) {
         el("fxDetail").innerHTML = '<div class="skeleton">Twelve Data rate limit hit (free tier = 8/min). Wait a few seconds and try again.</div>';
@@ -141,23 +141,31 @@ CP.forexUI = (function () {
     });
   }
 
-  // Sequential scan with spacing to respect the free-tier rate limit.
+  // Reflect the actual data source based on the results we have.
+  function setStatus() {
+    var st = el("fxStatus"); if (!st) return;
+    var res = F.state.results, ids = Object.keys(res);
+    var live = ids.filter(function (k) { return res[k]._live; }).length;
+    if (!ids.length) { st.textContent = F.getKey() ? "Live · Twelve Data" : "Fetching live feed…"; return; }
+    if (live === 0) st.textContent = "Demo · live feed unavailable (try again / add a key)";
+    else if (live === ids.length) st.textContent = F.getKey() ? "Live · Twelve Data" : "Live · free market feed";
+    else st.textContent = "Live · " + live + "/" + ids.length + " pairs (rest demo)";
+  }
+
+  // Sequential scan with spacing so we don't hammer the data source.
   function scanAll() {
     if (F.state.scanning) return;
     F.state.scanning = true;
-    var live = !!F.getKey();
+    var keyed = !!F.getKey();
+    var delay = keyed ? 8000 : 1400;               // TD free = 8/min; keyless Yahoo proxy is gentler
     var status = el("fxStatus"), pairs = F.PAIRS.slice(), i = 0;
     function next() {
-      if (i >= pairs.length) {
-        F.state.scanning = false;
-        status.textContent = (live ? "Live · Twelve Data" : "Demo · sample signals (add a free key for live)");
-        renderGrid(); return;
-      }
+      if (i >= pairs.length) { F.state.scanning = false; setStatus(); renderGrid(); return; }
       var p = pairs[i++];
-      status.textContent = "Scanning " + p.sym + " (" + i + "/" + pairs.length + ")…";
+      status.textContent = "Analyzing " + p.sym + " (" + i + "/" + pairs.length + ")…";
       F.analyze(p.id).then(function () { renderGrid(); })
         .catch(function () {})
-        .then(function () { setTimeout(next, live ? 2600 : 60); }); // throttle only when hitting the live API
+        .then(function () { setTimeout(next, delay); });
     }
     next();
   }
@@ -182,11 +190,10 @@ CP.forexUI = (function () {
     onOpen: function () {
       shell();
       if (F.state.results[F.state.selected]) return; // already populated
-      // Demo mode is instant + rate-limit-free: fill the whole grid so the
-      // section clearly works. With a live key, only analyze the selected pair
-      // (keeps within the free-tier request budget; use "Scan all" for the rest).
-      if (!F.getKey()) scanAll();
+      // Show the selected pair immediately, then load every pair live in the
+      // background (keyless Yahoo feed, or Twelve Data if a key is set).
       selectPair(F.state.selected);
+      scanAll();
     },
   };
 })();
