@@ -52,7 +52,7 @@ CP.forexUI = (function () {
     el("fxGrid").innerHTML = F.PAIRS.map(function (p) {
       var r = F.state.results[p.id];
       var badge = r ? '<span class="pill ' + sigClass(r.signal) + '">' + r.signal + "</span>" : '<span class="pill neutral">—</span>';
-      var sub = r ? (r.signal === "NO_SIGNAL" ? "no setup" : "conf " + r.confidence_score + "/5 · " + r.risk_reward_ratio + "R")
+      var sub = r ? ((r._live ? "" : "demo · ") + (r.signal === "NO_SIGNAL" ? "no setup" : "conf " + r.confidence_score + "/5 · " + r.risk_reward_ratio + "R"))
         : "tap to analyze";
       var sel = p.id === F.state.selected ? " sel" : "";
       var nm = NAMES[p.id] || "";
@@ -78,6 +78,10 @@ CP.forexUI = (function () {
     var t2 = t.t2 ? tierRow("H1", "Structure", null, "Res " + F.fmt(id, t.t2.resistance) + " (" + Math.round(t.t2.distResPips) + "p) · Sup " + F.fmt(id, t.t2.support) + " (" + Math.round(t.t2.distSupPips) + "p)") : "";
     var t3 = t.t3 ? tierRow("M15", "Trigger", t.t3.triggers.length > 0, t.t3.triggers.length ? t.t3.triggers.join(", ") : "no confirmation · RSI " + t.t3.rsi.toFixed(0)) : "";
 
+    var warn = r._live ? "" :
+      '<div class="fx-demo-warn">⚠ Sample data — the live feed for ' + F.symOf(id) +
+      ' is temporarily unavailable, so this price is illustrative, <strong>not the real market price</strong>. Press <strong>Analyze</strong> to retry live.</div>';
+
     var color = r.signal === "BUY" ? "var(--bull)" : r.signal === "SELL" ? "var(--bear)" : "var(--neutral)";
     var head =
       '<div class="fx-signal-head" style="border-color:' + color + '">' +
@@ -98,7 +102,7 @@ CP.forexUI = (function () {
     }
 
     el("fxDetail").innerHTML =
-      head + levels +
+      warn + head + levels +
       '<div class="fx-tiers">' + t1 + t2 + t3 + "</div>" +
       dataReadout(id, r._data) +
       '<div class="fx-reason">' + U.escapeHtml(r.reasoning) + "</div>";

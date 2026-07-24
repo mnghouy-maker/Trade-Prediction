@@ -1259,3 +1259,15 @@ body.locked { overflow: hidden; }
 .fx-card { color: var(--text); }
 .fx-card .fx-sym { color: var(--text); }
 .fx-name { font-size: 11px; color: var(--text-dim); margin-top: -2px; }
+
+/* Forex: prominent sample-data warning when the live feed is unavailable */
+.fx-demo-warn {
+  background: rgba(240,160,32,0.12);
+  border: 1px solid var(--neutral);
+  color: #ffd98a;
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  margin-bottom: 14px;
+}
+.fx-demo-warn strong { color: #fff; }

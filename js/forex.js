@@ -331,8 +331,8 @@ CP.forex = (function () {
   // regime (uptrend / downtrend / range) so the demo actually demonstrates real
   // BUY / SELL / NO_SIGNAL setups instead of always returning NO_SIGNAL.
   function synth(sym, interval, size) {
-    var bases = { "EUR/USD": 1.08, "GBP/USD": 1.27, "USD/JPY": 156, "USD/CAD": 1.36, "AUD/USD": 0.66,
-      "USD/CHF": 0.90, "NZD/USD": 0.60, "EUR/GBP": 0.85, "EUR/JPY": 168, "GBP/JPY": 198, "XAU/USD": 2350 };
+    var bases = { "EUR/USD": 1.09, "GBP/USD": 1.27, "USD/JPY": 157, "USD/CAD": 1.37, "AUD/USD": 0.66,
+      "USD/CHF": 0.89, "NZD/USD": 0.60, "EUR/GBP": 0.85, "EUR/JPY": 171, "GBP/JPY": 199, "XAU/USD": 4040 };
     var base = bases[sym] || 1.1;
     var hc = 0; for (var s = 0; s < sym.length; s++) hc = (hc * 31 + sym.charCodeAt(s)) >>> 0;
     var mode = hc % 4;                                   // 0,2 = up · 1 = down · 3 = range
