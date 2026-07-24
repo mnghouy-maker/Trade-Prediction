@@ -181,23 +181,18 @@ CP.forex = (function () {
       t3: { rsi: m5rsi, engulf: 0, choch: m15ch, triggers: [] },
     };
 
-    // ---- TIER 1: anchor must give a clean bias ----
-    if (tier1 === "NEUTRAL") {
-      out.reasoning = "Tier 1 (D1) anchor is unclear — price vs 200 EMA and swing structure are not aligned into a clean trend. No directional bias, so no trade is taken.";
-      return out;
+    // ---- Direction: always commit to a side (BUY or SELL) ----
+    var side;
+    if (tier1 === "BULLISH") side = "long";
+    else if (tier1 === "BEARISH") side = "short";
+    else {
+      var lean = (price > e200 ? 1 : -1) + (m5rsi >= 50 ? 1 : -1) + (m15ch >= 0 ? 1 : -1);
+      side = lean >= 0 ? "long" : "short";
     }
-    // ---- TIER 2: block entries into the opposing level ----
-    if (tier1 === "BULLISH" && distRes <= 5) {
-      out.reasoning = "Tier 1 is bullish but price is within 5 pips of H1 resistance (" + fmt(id, sr.res) + "). Buying into resistance is blocked by the rules.";
-      return out;
-    }
-    if (tier1 === "BEARISH" && distSup <= 5) {
-      out.reasoning = "Tier 1 is bearish but price is sitting on H1 support (" + fmt(id, sr.sup) + "). Selling into support is blocked by the rules.";
-      return out;
-    }
-    // ---- TIER 3: M5/M15 execution trigger confirming the macro direction ----
+
+    // Execution triggers (confirmation strength for confidence / notes)
     var trigs = [];
-    if (tier1 === "BULLISH") {
+    if (side === "long") {
       if (m5rsi < 40) trigs.push("M5 RSI bounce (" + m5rsi.toFixed(0) + ")");
       if (pat === "Bullish Engulfing" || pat === "Hammer") trigs.push("M5 " + pat);
       if (m15ch === 1) trigs.push("M15 bullish BOS/CHoCH");
@@ -207,48 +202,52 @@ CP.forex = (function () {
       if (m15ch === -1) trigs.push("M15 bearish BOS/CHoCH");
     }
     out._tiers.t3.triggers = trigs;
-    if (!trigs.length) {
-      out.reasoning = "Tier 1/2 align " + tier1.toLowerCase() + ", but the M5/M15 execution tier shows no confirmation (no RSI bounce, candle pattern, or CHoCH/BOS). Waiting for a clean micro-entry.";
-      return out;
-    }
 
-    // RISK — SL from 1.5*ATR or structural swing; TP for RRR >= 1.5 capped by H1 level
-    var atrM15 = atr(m15.highs, m15.lows, m15.closes, 14);
+    // ---- Risk: SL = max(1.5*ATR, structural swing); TP ladder at ~2R / 3R ----
+    var entry = price;
     var lastLows = m15.lows.slice(-10), lastHighs = m15.highs.slice(-10);
-    var side = tier1 === "BULLISH" ? "long" : "short";
-    var slDist, stop, cap, avail, tp, rr;
+    var slDist, stop, cap, avail, tp1, tp2, rr;
     if (side === "long") {
-      slDist = Math.max(1.5 * atrM15, price - Math.min.apply(null, lastLows));
-      stop = price - slDist; cap = sr.res; avail = cap - price;
-      if (slDist <= 0 || avail / slDist < 1.5) { out.reasoning = tooTightMsg(tier1, id, sr.res); return out; }
-      tp = price + Math.min(2 * slDist, avail - pip); rr = (tp - price) / slDist;
+      slDist = Math.max(1.5 * atrM15, entry - Math.min.apply(null, lastLows));
+      stop = entry - slDist; cap = sr.res; avail = cap - entry;
+      tp1 = (avail / slDist >= 1.5) ? entry + Math.min(2 * slDist, avail - pip) : entry + 1.5 * slDist;
+      tp2 = entry + 3 * slDist; rr = (tp1 - entry) / slDist;
     } else {
-      slDist = Math.max(1.5 * atrM15, Math.max.apply(null, lastHighs) - price);
-      stop = price + slDist; cap = sr.sup; avail = price - cap;
-      if (slDist <= 0 || avail / slDist < 1.5) { out.reasoning = tooTightMsg(tier1, id, sr.sup); return out; }
-      tp = price - Math.min(2 * slDist, avail - pip); rr = (price - tp) / slDist;
+      slDist = Math.max(1.5 * atrM15, Math.max.apply(null, lastHighs) - entry);
+      stop = entry + slDist; cap = sr.sup; avail = entry - cap;
+      tp1 = (avail / slDist >= 1.5) ? entry - Math.min(2 * slDist, avail - pip) : entry - 1.5 * slDist;
+      tp2 = entry - 3 * slDist; rr = (entry - tp1) / slDist;
     }
-    if (rr < 1.5) { out.reasoning = tooTightMsg(tier1, id, side === "long" ? sr.res : sr.sup); return out; }
 
-    // Confidence 1..5
-    var conf = 2;
-    if (rr >= 2) conf++;
-    if (trigs.length >= 2) conf++;
+    // ---- Confidence 1..5 from how much of the MTF stack aligns ----
     var clearance = side === "long" ? distRes : distSup;
-    if (clearance > 15) conf++;
+    var conf = 1;
+    if (tier1 !== "NEUTRAL") conf++;
+    if (clearance > 5) conf++;
+    if (trigs.length) conf++;
+    if (rr >= 2) conf++;
     conf = Math.max(1, Math.min(5, conf));
 
-    var buf = 0.15 * atrM15;
+    var cautions = [];
+    if (tier1 === "NEUTRAL") cautions.push("range/mixed D1 anchor");
+    if (clearance <= 5) cautions.push("near " + (side === "long" ? "resistance" : "support"));
+    if (!trigs.length) cautions.push("no fresh M5 trigger yet");
+
+    var buf = 0.15 * atrM15, slPips = Math.abs(entry - stop) / pip;
+    var tp1Pips = Math.abs(tp1 - entry) / pip, tp2Pips = Math.abs(tp2 - entry) / pip;
     out.signal = side === "long" ? "BUY" : "SELL";
-    out.entry_range = fmt(id, price - buf) + " - " + fmt(id, price + buf);
+    out.entry_range = fmt(id, entry - buf) + " - " + fmt(id, entry + buf);
     out.stop_loss = +fmt(id, stop);
-    out.take_profit = +fmt(id, tp);
+    out.take_profit = +fmt(id, tp1);
+    out.take_profit_2 = +fmt(id, tp2);
     out.risk_reward_ratio = +rr.toFixed(2);
     out.confidence_score = conf;
-    out.reasoning = "D1 anchor is " + tier1.toLowerCase() + " (price " + (price > e200 ? "above" : "below") +
-      " 200 EMA with " + (side === "long" ? "higher highs/lows" : "lower highs/lows") + "), and H1 structure leaves " +
-      Math.round(clearance) + " pips to the opposing level. M15 confirms with " + trigs.join(" + ") +
-      ", giving a " + rr.toFixed(1) + ":1 setup.";
+    out._levels = { entry: entry, stop: stop, tp1: tp1, tp2: tp2, slPips: slPips, tp1Pips: tp1Pips, tp2Pips: tp2Pips };
+    out.reasoning = out.signal + " " + id + " · " +
+      (tier1 !== "NEUTRAL" ? "D1 " + tier1.toLowerCase() + " bias" : "momentum-led bias") +
+      (trigs.length ? ", confirmed by " + trigs.join(" + ") : ", awaiting a clean M5 trigger") +
+      ". SL " + Math.round(slPips) + "p, TP1 " + Math.round(tp1Pips) + "p (" + rr.toFixed(1) + "R), TP2 " + Math.round(tp2Pips) + "p." +
+      (cautions.length ? " Caution: " + cautions.join(", ") + "." : "");
     return out;
   }
   function tooTightMsg(tier1, id, level) {

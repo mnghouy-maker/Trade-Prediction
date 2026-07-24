@@ -1252,3 +1252,5 @@ body.locked { overflow: hidden; }
 .fx-adv > summary::-webkit-details-marker { display: none; }
 .fx-adv > summary:hover { color: var(--text); }
 .fx-adv[open] > summary { color: var(--text); margin-bottom: 8px; }
+
+.fx-pip { font-size: 11px; color: var(--text-faint); font-weight: 500; }

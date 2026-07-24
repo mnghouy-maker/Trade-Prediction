@@ -15,9 +15,9 @@ CP.forexUI = (function () {
       '<section class="card">' +
         '<div class="card-head"><h2>Forex Signals · 3-Tier MTF Engine</h2>' +
           '<span id="fxStatus" class="card-sub">Loading live feed…</span></div>' +
-        '<p class="card-note">Top-down analysis: <strong>D1</strong> anchor trend → <strong>H1</strong> structure → <strong>M15</strong> trigger. ' +
-          'Signals obey strict rules: bias must align across all tiers, entries avoid opposing S/R, stops use 1.5× ATR, and reward:risk must be ≥ 1.5 or it returns NO_SIGNAL. ' +
-          '<strong>Live prices for all 11 pairs — no API key or sign-up needed.</strong></p>' +
+        '<p class="card-note">Top-down analysis: <strong>D1</strong> anchor trend → <strong>H1</strong> structure → <strong>M15/M5</strong> trigger. ' +
+          'Every pair gets a <strong>BUY or SELL</strong> with entry, Stop-Loss and two Take-Profit targets (stops use 1.5× ATR). ' +
+          'Confidence (1–5) shows how well the tiers align. <strong>Auto-refreshes every 5 minutes · live prices for all 11 pairs, no API key needed.</strong></p>' +
         '<details class="fx-adv"><summary>Advanced · use your own data key (optional)</summary>' +
           '<div class="fx-keybar">' +
             '<input id="fxKey" type="password" placeholder="Twelve Data API key (optional)" value="' + U.escapeHtml(F.getKey()) + '" />' +
@@ -78,10 +78,12 @@ CP.forexUI = (function () {
 
     var levels = "";
     if (r.signal !== "NO_SIGNAL") {
+      var L = r._levels || {};
       levels = '<div class="fx-levels">' +
         lvl("Entry", r.entry_range, "var(--text)") +
-        lvl("Stop loss", F.fmt(id, r.stop_loss), "var(--bear)") +
-        lvl("Take profit", F.fmt(id, r.take_profit), "var(--bull)") +
+        lvl("Stop loss", F.fmt(id, r.stop_loss) + pipTag(L.slPips), "var(--bear)") +
+        lvl("Take profit 1", F.fmt(id, r.take_profit) + pipTag(L.tp1Pips), "var(--bull)") +
+        lvl("Take profit 2", F.fmt(id, r.take_profit_2) + pipTag(L.tp2Pips), "var(--bull)") +
         lvl("Reward : Risk", r.risk_reward_ratio + " : 1", "var(--accent)") +
       "</div>";
     }
@@ -101,6 +103,7 @@ CP.forexUI = (function () {
   }
   function t1ok(bias) { return bias === "NEUTRAL" ? null : true; }
   function lvl(k, v, c) { return '<div class="fx-lvl"><span>' + k + '</span><strong style="color:' + c + '">' + v + "</strong></div>"; }
+  function pipTag(n) { return n == null ? "" : ' <span class="fx-pip">' + Math.round(n) + "p</span>"; }
 
   // Extracted Tier 1/2/3 data readout (mirrors the analysis input contract).
   function dataReadout(id, D) {
@@ -189,8 +192,20 @@ CP.forexUI = (function () {
     el("fxScan").addEventListener("click", scanAll);
   }
 
+  // Re-pull live data + re-signal every 5 minutes (only while the tab is open).
+  function refreshLive() {
+    var panel = el("tab-forex");
+    if (!panel || !panel.classList.contains("active") || F.state.scanning) return;
+    F.state.cache = {};
+    scanAll();
+    if (F.state.selected) selectPair(F.state.selected, true);
+  }
+
   return {
-    init: function () { shell(); },
+    init: function () {
+      shell();
+      if (!CP.forexUI._timer) CP.forexUI._timer = setInterval(refreshLive, 5 * 60 * 1000);
+    },
     onOpen: function () {
       shell();
       if (F.state.results[F.state.selected]) return; // already populated
